@@ -7,10 +7,19 @@ import 'package:firebase_remote_config/firebase_remote_config.dart';
 
 import '../firebase_options.dart';
 import '../models/scam_radar_item.dart';
+import '../models/threat_report.dart';
 
 class FirebaseService {
   static bool _initialized = false;
   static bool get isInitialized => _initialized;
+
+  static User? get currentUser =>
+      _initialized ? FirebaseAuth.instance.currentUser : null;
+
+  static Stream<User?> authStateChanges() {
+    if (!_initialized) return const Stream.empty();
+    return FirebaseAuth.instance.authStateChanges();
+  }
 
   static Future<void> initialize() async {
     try {
@@ -64,7 +73,58 @@ class FirebaseService {
     }
   }
 
-  /// Submits a user-reported scam pattern to Firestore
+  /// Sign In with Email & Password
+  static Future<UserCredential?> signInWithEmail(String email, String password) async {
+    if (!_initialized) return null;
+    return await FirebaseAuth.instance.signInWithEmailAndPassword(
+      email: email,
+      password: password,
+    );
+  }
+
+  /// Create Account with Email & Password
+  static Future<UserCredential?> signUpWithEmail(String email, String password) async {
+    if (!_initialized) return null;
+    return await FirebaseAuth.instance.createUserWithEmailAndPassword(
+      email: email,
+      password: password,
+    );
+  }
+
+  /// Sign In as Guest (Anonymous)
+  static Future<UserCredential?> signInGuest() async {
+    if (!_initialized) return null;
+    return await FirebaseAuth.instance.signInAnonymously();
+  }
+
+  /// Sign Out
+  static Future<void> signOut() async {
+    if (!_initialized) return;
+    await FirebaseAuth.instance.signOut();
+  }
+
+  /// Syncs an investigation report to the user's private cloud history in Firestore
+  static Future<void> syncInvestigationToCloud(ThreatReport report) async {
+    if (!_initialized) return;
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    try {
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('investigations')
+          .doc(report.id)
+          .set({
+        ...report.toMap(),
+        'syncedAt': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      debugPrint('Cloud sync warning: $e');
+    }
+  }
+
+  /// Submits a user-reported scam pattern to the public Scam Radar in Firestore
   static Future<void> submitCommunityScam(ScamRadarItem item) async {
     if (!_initialized) return;
     try {
@@ -112,7 +172,6 @@ class FirebaseService {
         );
       }).toList();
 
-      // Combine with curated baseline templates
       return [...items, ...ScamRadarItem.trendingScams];
     });
   }

@@ -2,8 +2,11 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../../services/investigation_service.dart';
 import '../../services/history_service.dart';
+import '../../services/firebase_service.dart';
+import '../widgets/auth_dialog.dart';
 import 'report_screen.dart';
 import 'url_inspector_screen.dart';
 
@@ -109,6 +112,13 @@ class HomeScreenState extends State<HomeScreen> {
     });
   }
 
+  void _showAuth() {
+    showDialog(
+      context: context,
+      builder: (context) => const AuthDialog(),
+    );
+  }
+
   Future<void> _runInvestigation() async {
     if (_selectedInputMode == 2) {
       // Threat Chain Investigation
@@ -142,7 +152,9 @@ class HomeScreenState extends State<HomeScreen> {
           forceLocalOnly: _preferOnDevice,
         );
 
+        // Local and Cloud sync
         await HistoryService.saveReport(report);
+        await FirebaseService.syncInvestigationToCloud(report);
 
         if (!mounted) return;
         setState(() {
@@ -204,6 +216,7 @@ class HomeScreenState extends State<HomeScreen> {
         );
 
         await HistoryService.saveReport(report);
+        await FirebaseService.syncInvestigationToCloud(report);
 
         if (!mounted) return;
         setState(() {
@@ -263,6 +276,7 @@ class HomeScreenState extends State<HomeScreen> {
       );
 
       await HistoryService.saveReport(report);
+      await FirebaseService.syncInvestigationToCloud(report);
 
       if (!mounted) return;
       setState(() {
@@ -319,18 +333,76 @@ class HomeScreenState extends State<HomeScreen> {
           ],
         ),
         actions: [
+          StreamBuilder<User?>(
+            stream: FirebaseService.authStateChanges(),
+            builder: (context, snapshot) {
+              final user = snapshot.data ?? FirebaseService.currentUser;
+              final isAnonymous = user?.isAnonymous ?? true;
+              return TextButton.icon(
+                onPressed: _showAuth,
+                icon: Icon(
+                  user != null && !isAnonymous ? Icons.account_circle : Icons.person_outline,
+                  size: 18,
+                  color: user != null && !isAnonymous ? const Color(0xFF10B981) : Colors.grey,
+                ),
+                label: Text(
+                  user != null && !isAnonymous
+                      ? (user.email?.split('@').first ?? 'Defender')
+                      : 'Sign In',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: user != null && !isAnonymous ? const Color(0xFF10B981) : Colors.grey,
+                  ),
+                ),
+              );
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.history_outlined),
             tooltip: 'Past Investigations',
-            onPressed: () => widget.onNavigateTab?.call(2),
+            onPressed: () => widget.onNavigateTab?.call(3),
           ),
         ],
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Engine Health Status Bar
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              decoration: BoxDecoration(
+                color: const Color(0xFF10B981).withOpacity(0.08),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: const Color(0xFF10B981).withOpacity(0.25)),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 8,
+                    height: 8,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFF10B981),
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'Hybrid Engine Active:',
+                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF10B981)),
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    'On-Device Nano + Gemini Cloud Core',
+                    style: TextStyle(fontSize: 11, color: isDark ? Colors.grey[300] : Colors.grey[800]),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 14),
+
             // 3-Way Mode Selector: Text vs Screenshot vs Threat Chain
             Container(
               width: double.infinity,
@@ -347,7 +419,7 @@ class HomeScreenState extends State<HomeScreen> {
                 ],
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 14),
 
             // Hybrid Inference Setting Switch
             Container(
@@ -728,7 +800,7 @@ class HomeScreenState extends State<HomeScreen> {
                 ),
               ),
             ),
-            const SizedBox(height: 28),
+            const SizedBox(height: 20),
 
             // URL Inspector Quick Banner
             OutlinedButton.icon(
