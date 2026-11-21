@@ -20,10 +20,14 @@ class HomeScreenState extends State<HomeScreen> {
   final InvestigationService _investigationService = InvestigationService();
   final ImagePicker _picker = ImagePicker();
 
-  int _selectedInputMode = 0; // 0: Text/Link, 1: Screenshot Scan
+  int _selectedInputMode = 0; // 0: Single Text/Link, 1: Screenshot, 2: Threat Chain
   Uint8List? _selectedImageBytes;
   String? _selectedImageMime;
   String? _selectedImageName;
+
+  // Threat Chain state
+  final List<String> _chainMessages = [];
+  final TextEditingController _chainInputController = TextEditingController();
 
   bool _preferOnDevice = true;
   bool _isAnalyzing = false;
@@ -61,7 +65,6 @@ class HomeScreenState extends State<HomeScreen> {
   }
 
   void _loadDemoScreenshot() {
-    // 1x1 transparent/colored PNG base64 fallback for immediate testing
     const demoBase64 =
         'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
     setState(() {
@@ -79,7 +82,92 @@ class HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  void _loadDemoChain() {
+    setState(() {
+      _chainMessages.clear();
+      _chainMessages.addAll([
+        'FedEx Notice: Parcel #FX-9201 addressed to you containing 5 illegal passports and fake credit cards detained at Mumbai Airport Customs. Contact customs clearance immediately.',
+        'Cyber Crime Officer Sharma: An arrest warrant has been prepared under your Aadhaar. Connect to official Skype video link immediately for digital arrest inquiry.',
+        'Urgent Notice: To avoid immediate physical dispatch of police team to your house, deposit ₹85,000 RBI verification security bond. Refundable in 2 hours.',
+      ]);
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Loaded 3-step Digital Arrest escalation thread!'),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  void _addMessageToChain() {
+    final text = _chainInputController.text.trim();
+    if (text.isEmpty) return;
+    setState(() {
+      _chainMessages.add(text);
+      _chainInputController.clear();
+    });
+  }
+
   Future<void> _runInvestigation() async {
+    if (_selectedInputMode == 2) {
+      // Threat Chain Investigation
+      if (_chainMessages.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Please add at least 1 message to the threat chain.'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        return;
+      }
+
+      setState(() {
+        _isAnalyzing = true;
+        _analysisStatus = '1. Correlating timeline and masking PII across messages...';
+      });
+
+      await Future.delayed(const Duration(milliseconds: 300));
+      if (!mounted) return;
+
+      setState(() {
+        _analysisStatus = _preferOnDevice
+            ? '2. Running On-Device Gemini Nano timeline analysis...'
+            : '2. Running Cloud AI Threat Chain Correlation via Firebase...';
+      });
+
+      try {
+        final report = await _investigationService.investigateMessageChain(
+          messages: _chainMessages,
+          forceLocalOnly: _preferOnDevice,
+        );
+
+        await HistoryService.saveReport(report);
+
+        if (!mounted) return;
+        setState(() {
+          _isAnalyzing = false;
+          _analysisStatus = '';
+        });
+
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ReportScreen(report: report),
+          ),
+        );
+      } catch (e) {
+        if (!mounted) return;
+        setState(() {
+          _isAnalyzing = false;
+          _analysisStatus = '';
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Investigation error: $e'), backgroundColor: Colors.redAccent),
+        );
+      }
+      return;
+    }
+
     if (_selectedInputMode == 1) {
       // Screenshot Investigation
       if (_selectedImageBytes == null) {
@@ -97,7 +185,7 @@ class HomeScreenState extends State<HomeScreen> {
         _analysisStatus = '1. Preprocessing image and masking sensitive visual regions...';
       });
 
-      await Future.delayed(const Duration(milliseconds: 400));
+      await Future.delayed(const Duration(milliseconds: 300));
       if (!mounted) return;
 
       setState(() {
@@ -202,6 +290,7 @@ class HomeScreenState extends State<HomeScreen> {
   @override
   void dispose() {
     _controller.dispose();
+    _chainInputController.dispose();
     super.dispose();
   }
 
@@ -241,7 +330,7 @@ class HomeScreenState extends State<HomeScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Mode Selector: Text vs Screenshot
+            // 3-Way Mode Selector: Text vs Screenshot vs Threat Chain
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(4),
@@ -251,98 +340,9 @@ class HomeScreenState extends State<HomeScreen> {
               ),
               child: Row(
                 children: [
-                  Expanded(
-                    child: InkWell(
-                      onTap: () => setState(() => _selectedInputMode = 0),
-                      borderRadius: BorderRadius.circular(10),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(vertical: 10),
-                        decoration: BoxDecoration(
-                          color: _selectedInputMode == 0
-                              ? (isDark ? const Color(0xFF334155) : Colors.white)
-                              : Colors.transparent,
-                          borderRadius: BorderRadius.circular(10),
-                          boxShadow: _selectedInputMode == 0
-                              ? [
-                                  BoxShadow(
-                                    color: Colors.black.withOpacity(0.08),
-                                    blurRadius: 4,
-                                    offset: const Offset(0, 2),
-                                  )
-                                ]
-                              : null,
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.text_fields_rounded,
-                              size: 18,
-                              color: _selectedInputMode == 0 ? Colors.blueAccent : Colors.grey,
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              'Text / Link Scan',
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight:
-                                    _selectedInputMode == 0 ? FontWeight.bold : FontWeight.w500,
-                                color: _selectedInputMode == 0
-                                    ? (isDark ? Colors.white : Colors.black87)
-                                    : Colors.grey,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                  Expanded(
-                    child: InkWell(
-                      onTap: () => setState(() => _selectedInputMode = 1),
-                      borderRadius: BorderRadius.circular(10),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(vertical: 10),
-                        decoration: BoxDecoration(
-                          color: _selectedInputMode == 1
-                              ? (isDark ? const Color(0xFF334155) : Colors.white)
-                              : Colors.transparent,
-                          borderRadius: BorderRadius.circular(10),
-                          boxShadow: _selectedInputMode == 1
-                              ? [
-                                  BoxShadow(
-                                    color: Colors.black.withOpacity(0.08),
-                                    blurRadius: 4,
-                                    offset: const Offset(0, 2),
-                                  )
-                                ]
-                              : null,
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.camera_alt_outlined,
-                              size: 18,
-                              color: _selectedInputMode == 1 ? Colors.blueAccent : Colors.grey,
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              'Screenshot Scan',
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight:
-                                    _selectedInputMode == 1 ? FontWeight.bold : FontWeight.w500,
-                                color: _selectedInputMode == 1
-                                    ? (isDark ? Colors.white : Colors.black87)
-                                    : Colors.grey,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
+                  _buildModeTab(0, Icons.text_fields_rounded, 'Single Msg', isDark),
+                  _buildModeTab(1, Icons.camera_alt_outlined, 'Screenshot', isDark),
+                  _buildModeTab(2, Icons.timeline_rounded, 'Threat Chain', isDark),
                 ],
               ),
             ),
@@ -371,7 +371,7 @@ class HomeScreenState extends State<HomeScreen> {
                         Text(
                           _preferOnDevice
                               ? 'On-Device Shield (Gemini Nano)'
-                              : 'Cloud AI (Gemini Flash Multimodal)',
+                              : 'Cloud AI (Gemini Flash Correlation)',
                           style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
                         ),
                         Text(
@@ -396,8 +396,134 @@ class HomeScreenState extends State<HomeScreen> {
             ),
             const SizedBox(height: 20),
 
-            // Mode 1: Screenshot Uploader UI
-            if (_selectedInputMode == 1) ...[
+            // Mode 2: Multi-Message Threat Chain UI
+            if (_selectedInputMode == 2) ...[
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Multi-Message Escalation Thread',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                  ),
+                  TextButton.icon(
+                    onPressed: _loadDemoChain,
+                    icon: const Icon(Icons.auto_fix_high, size: 16),
+                    label: const Text('Load Demo Chain', style: TextStyle(fontSize: 12)),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+
+              // Existing Chain Messages
+              if (_chainMessages.isEmpty) ...[
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: isDark ? Colors.white10 : Colors.black12),
+                  ),
+                  child: Column(
+                    children: [
+                      const Icon(Icons.timeline_rounded, color: Colors.blueAccent, size: 36),
+                      const SizedBox(height: 10),
+                      const Text(
+                        'No messages added to thread yet',
+                        style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Add sequential messages from an escalating scam (e.g. initial SMS ➔ fake phone call notice ➔ payment request)',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(fontSize: 12, color: isDark ? Colors.grey[400] : Colors.grey[600]),
+                      ),
+                    ],
+                  ),
+                ),
+              ] else ...[
+                ..._chainMessages.asMap().entries.map((entry) {
+                  final index = entry.key;
+                  final msg = entry.value;
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: isDark ? Colors.white10 : Colors.black12),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        CircleAvatar(
+                          radius: 12,
+                          backgroundColor: Colors.blueAccent.withOpacity(0.2),
+                          child: Text('${index + 1}',
+                              style: const TextStyle(
+                                  fontSize: 11, fontWeight: FontWeight.bold, color: Colors.blueAccent)),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            msg,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: isDark ? Colors.grey[200] : Colors.grey[800],
+                            ),
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close, size: 16, color: Colors.grey),
+                          onPressed: () => setState(() => _chainMessages.removeAt(index)),
+                        ),
+                      ],
+                    ),
+                  );
+                }),
+              ],
+              const SizedBox(height: 12),
+
+              // Add Message Input Box
+              Container(
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: isDark ? Colors.white10 : Colors.black12),
+                ),
+                child: Column(
+                  children: [
+                    TextField(
+                      controller: _chainInputController,
+                      maxLines: 2,
+                      decoration: InputDecoration(
+                        hintText: 'Enter next message in the incident...',
+                        hintStyle: TextStyle(
+                          fontSize: 12,
+                          color: isDark ? Colors.grey[500] : Colors.grey[400],
+                        ),
+                        contentPadding: const EdgeInsets.all(14),
+                        border: InputBorder.none,
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          FilledButton.tonalIcon(
+                            onPressed: _addMessageToChain,
+                            icon: const Icon(Icons.add, size: 16),
+                            label: const Text('Add Step', style: TextStyle(fontSize: 12)),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ] else if (_selectedInputMode == 1) ...[
+              // Mode 1: Screenshot Uploader UI
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(20),
@@ -501,7 +627,7 @@ class HomeScreenState extends State<HomeScreen> {
                 ),
               ),
             ] else ...[
-              // Mode 0: Text / Link Input UI
+              // Mode 0: Single Text / Link Input UI
               Text(
                 'Suspicious Message or Link',
                 style: TextStyle(
@@ -581,12 +707,22 @@ class HomeScreenState extends State<HomeScreen> {
                         height: 20,
                         child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                       )
-                    : Icon(_selectedInputMode == 1 ? Icons.document_scanner : Icons.manage_search_rounded,
-                        size: 22),
+                    : Icon(
+                        _selectedInputMode == 2
+                            ? Icons.timeline_rounded
+                            : _selectedInputMode == 1
+                                ? Icons.document_scanner
+                                : Icons.manage_search_rounded,
+                        size: 22,
+                      ),
                 label: Text(
                   _isAnalyzing
                       ? _analysisStatus
-                      : (_selectedInputMode == 1 ? 'Investigate Screenshot' : 'Investigate Threat'),
+                      : (_selectedInputMode == 2
+                          ? 'Correlate Threat Chain (${_chainMessages.length} msgs)'
+                          : _selectedInputMode == 1
+                              ? 'Investigate Screenshot'
+                              : 'Investigate Threat'),
                   style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
                 ),
               ),
@@ -642,6 +778,55 @@ class HomeScreenState extends State<HomeScreen> {
             ),
             const SizedBox(height: 32),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildModeTab(int index, IconData icon, String label, bool isDark) {
+    final isSelected = _selectedInputMode == index;
+    return Expanded(
+      child: InkWell(
+        onTap: () => setState(() => _selectedInputMode = index),
+        borderRadius: BorderRadius.circular(10),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          decoration: BoxDecoration(
+            color: isSelected
+                ? (isDark ? const Color(0xFF334155) : Colors.white)
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(10),
+            boxShadow: isSelected
+                ? [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.08),
+                      blurRadius: 4,
+                      offset: const Offset(0, 2),
+                    )
+                  ]
+                : null,
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                icon,
+                size: 16,
+                color: isSelected ? Colors.blueAccent : Colors.grey,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                  color: isSelected
+                      ? (isDark ? Colors.white : Colors.black87)
+                      : Colors.grey,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

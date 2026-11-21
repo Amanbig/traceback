@@ -22,6 +22,8 @@ class ThreatReport {
   final DateTime createdAt;
   final String? imageBase64; // Screenshot if multimodal scan
   final bool isImageScan;
+  final bool isChainScan;
+  final List<Map<String, dynamic>>? chainStages;
 
   ThreatReport({
     required this.id,
@@ -37,6 +39,8 @@ class ThreatReport {
     required this.createdAt,
     this.imageBase64,
     this.isImageScan = false,
+    this.isChainScan = false,
+    this.chainStages,
   });
 
   Map<String, dynamic> toMap() {
@@ -54,6 +58,8 @@ class ThreatReport {
       'createdAt': createdAt.toIso8601String(),
       'imageBase64': imageBase64,
       'isImageScan': isImageScan,
+      'isChainScan': isChainScan,
+      'chainStages': chainStages,
     };
   }
 
@@ -75,6 +81,10 @@ class ThreatReport {
       createdAt: DateTime.tryParse(map['createdAt'] ?? '') ?? DateTime.now(),
       imageBase64: map['imageBase64'] as String?,
       isImageScan: map['isImageScan'] as bool? ?? false,
+      isChainScan: map['isChainScan'] as bool? ?? false,
+      chainStages: (map['chainStages'] as List<dynamic>?)
+          ?.map((e) => Map<String, dynamic>.from(e as Map))
+          .toList(),
     );
   }
 

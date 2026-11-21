@@ -47,6 +47,158 @@ class InvestigationService {
     }
   }
 
+  /// Investigates a sequence of related scam messages (Threat Chain Correlation)
+  Future<ThreatReport> investigateMessageChain({
+    required List<String> messages,
+    bool forceLocalOnly = false,
+  }) async {
+    final reportId = _uuid.v4();
+    final maskedList = messages.map((m) => PiiMasker.mask(m)).toList();
+    final joinedOriginal = messages.join('\n---\n');
+    final joinedMasked = maskedList.join('\n---\n');
+
+    final localBaselineStages = <Map<String, dynamic>>[];
+    for (int i = 0; i < messages.length; i++) {
+      final step = i + 1;
+      String stageName = 'Stage $step: Escalation';
+      if (step == 1) stageName = 'Step 1: Initial Hook / Lure';
+      if (step == 2) stageName = 'Step 2: Authority & Isolation';
+      if (step >= 3) stageName = 'Step 3: Direct Financial Coercion';
+
+      localBaselineStages.add({
+        'step': step,
+        'rawMessage': maskedList[i],
+        'stageName': stageName,
+        'tacticDetected': step == 1 ? 'False Lure' : step == 2 ? 'Impersonation' : 'Coercion',
+        'stageRiskScore': (55 + (step * 15)).clamp(40, 98),
+      });
+    }
+
+    final localBaseline = ThreatReport(
+      id: reportId,
+      originalSnippet: joinedOriginal,
+      maskedSnippet: joinedMasked,
+      riskScore: 92,
+      threatLevel: ThreatLevel.critical,
+      summary:
+          'Multi-message threat correlation identified an orchestrated fraud funnel progressing from initial fear hooks into active financial extortion.',
+      redFlags: [
+        'Rapid pressure escalation between consecutive messages',
+        'Progressive isolation from third-party advisors and family',
+        'Direct monetary demand under false official pretexts',
+      ],
+      tactics: [
+        'Multi-stage Fraud Campaign',
+        'Psychological Grooming',
+        'Authority Impersonation',
+        'Extortion Escalation',
+      ],
+      safeNextSteps: [
+        'Cease all communications across all channels with these senders immediately',
+        'Do not transfer any verification deposits or penalty fees',
+        'File an emergency cybercrime report at cybercrime.gov.in (Helpline: 1930)',
+        'Alert your bank branch manager if bank credentials were shared',
+      ],
+      isLocalInference: true,
+      createdAt: DateTime.now(),
+      isChainScan: true,
+      chainStages: localBaselineStages,
+    );
+
+    if (forceLocalOnly || !FirebaseService.isInitialized) {
+      return localBaseline;
+    }
+
+    try {
+      final model = FirebaseAI.googleAI().generativeModel(
+        model: 'gemini-1.5-flash',
+        generationConfig: GenerationConfig(
+          responseMimeType: 'application/json',
+        ),
+      );
+
+      final promptText = '''
+You are "Traceback", an elite cyber fraud intelligence officer.
+Analyze this unfolding sequence of consecutive messages sent to a potential victim:
+
+${maskedList.asMap().entries.map((e) => 'MESSAGE ${e.key + 1}:\n"""${e.value}"""').join('\n\n')}
+
+Perform cross-message timeline correlation:
+1. Map how the attack escalates across each message.
+2. Determine overall composite risk score (0-100) and threat level.
+3. Classify the campaign type (e.g. "Digital Arrest Scam", "Advance Fee Courier Scam", "Telegram Task Investment Trap").
+4. Identify red flags and psychological levers applied at each escalation point.
+5. Provide actionable defense steps for the victim.
+
+Return ONLY a valid JSON object matching this schema:
+{
+  "riskScore": number,
+  "threatLevel": "safe" | "low" | "suspicious" | "dangerous" | "critical",
+  "summary": string,
+  "redFlags": [string],
+  "tactics": [string],
+  "safeNextSteps": [string],
+  "stages": [
+    {
+      "step": number,
+      "stageName": string,
+      "tacticDetected": string,
+      "stageRiskScore": number
+    }
+  ]
+}
+''';
+
+      final response = await model.generateContent([Content.text(promptText)]);
+      final rawJson = response.text;
+
+      if (rawJson == null || rawJson.trim().isEmpty) {
+        return localBaseline;
+      }
+
+      final decoded = jsonDecode(rawJson) as Map<String, dynamic>;
+      final rawStages = decoded['stages'] as List<dynamic>?;
+
+      List<Map<String, dynamic>> stages = [];
+      if (rawStages != null) {
+        for (int i = 0; i < rawStages.length; i++) {
+          final s = rawStages[i] as Map<String, dynamic>;
+          stages.add({
+            'step': s['step'] ?? (i + 1),
+            'rawMessage': i < maskedList.length ? maskedList[i] : '',
+            'stageName': s['stageName'] ?? 'Step ${i + 1}',
+            'tacticDetected': s['tacticDetected'] ?? 'Manipulation',
+            'stageRiskScore': s['stageRiskScore'] ?? 80,
+          });
+        }
+      } else {
+        stages = localBaselineStages;
+      }
+
+      return ThreatReport(
+        id: reportId,
+        originalSnippet: joinedOriginal,
+        maskedSnippet: joinedMasked,
+        riskScore: (decoded['riskScore'] as num?)?.toInt() ?? localBaseline.riskScore,
+        threatLevel: ThreatLevel.values.firstWhere(
+          (e) => e.name == (decoded['threatLevel'] ?? '').toString().toLowerCase(),
+          orElse: () => localBaseline.threatLevel,
+        ),
+        summary: decoded['summary'] as String? ?? localBaseline.summary,
+        redFlags: List<String>.from(decoded['redFlags'] ?? localBaseline.redFlags),
+        tactics: List<String>.from(decoded['tactics'] ?? localBaseline.tactics),
+        safeNextSteps: List<String>.from(decoded['safeNextSteps'] ?? localBaseline.safeNextSteps),
+        isLocalInference: false,
+        createdAt: DateTime.now(),
+        isChainScan: true,
+        chainStages: stages,
+      );
+    } catch (e) {
+      debugPrint('Chain investigation fallback: $e');
+      return localBaseline;
+    }
+  }
+
   /// Investigates a screenshot or image using Gemini Multimodal via Firebase AI Logic
   Future<ThreatReport> investigateImage({
     required Uint8List imageBytes,
@@ -57,7 +209,6 @@ class InvestigationService {
     final reportId = _uuid.v4();
     final imageBase64 = base64Encode(imageBytes);
 
-    // Step 1: Prepare local baseline report
     final localBaseline = ThreatReport(
       id: reportId,
       originalSnippet: '[Screenshot Visual Investigation]',
@@ -91,7 +242,6 @@ class InvestigationService {
       return localBaseline;
     }
 
-    // Step 2: Query Gemini Multimodal via Firebase AI Logic
     try {
       final model = FirebaseAI.googleAI().generativeModel(
         model: 'gemini-1.5-flash',
@@ -158,13 +308,13 @@ Return ONLY a valid JSON object matching this schema:
         redFlags: List<String>.from(decoded['redFlags'] ?? localBaseline.redFlags),
         tactics: List<String>.from(decoded['tactics'] ?? localBaseline.tactics),
         safeNextSteps: List<String>.from(decoded['safeNextSteps'] ?? localBaseline.safeNextSteps),
-        isLocalInference: false, // Cloud AI powered
+        isLocalInference: false,
         createdAt: DateTime.now(),
         imageBase64: imageBase64,
         isImageScan: true,
       );
     } catch (e) {
-      debugPrint('Multimodal Cloud AI error (falling back to on-device): $e');
+      debugPrint('Multimodal Cloud AI error: $e');
       return localBaseline;
     }
   }

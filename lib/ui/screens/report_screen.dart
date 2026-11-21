@@ -120,6 +120,7 @@ class ReportScreen extends StatelessWidget {
 🚨 TRACEBACK FRAUD INVESTIGATION REPORT
 Risk Score: ${report.riskScore}/100 (${report.threatLevel.name.toUpperCase()})
 Engine: ${report.isLocalInference ? 'On-Device Shield (Local Nano)' : 'Cloud AI (Gemini Flash)'}
+Type: ${report.isChainScan ? 'Multi-Message Threat Chain' : report.isImageScan ? 'Screenshot Scan' : 'Message Scan'}
 
 Summary:
 ${report.summary}
@@ -157,6 +158,86 @@ ${report.safeNextSteps.map((s) => '• $s').join('\n')}
               ),
             ),
             const SizedBox(height: 24),
+
+            // If Multi-Message Chain Scan, Show Escalating Timeline
+            if (report.isChainScan && report.chainStages != null && report.chainStages!.isNotEmpty) ...[
+              Text(
+                'Escalating Threat Funnel (${report.chainStages!.length} Steps)',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: isDark ? Colors.white : Colors.black87,
+                ),
+              ),
+              const SizedBox(height: 10),
+              ...report.chainStages!.asMap().entries.map((entry) {
+                final stage = entry.value;
+                final isLast = entry.key == report.chainStages!.length - 1;
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: isLast ? Colors.redAccent.withOpacity(0.5) : (isDark ? Colors.white10 : Colors.black12),
+                      width: isLast ? 1.5 : 1.0,
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            children: [
+                              CircleAvatar(
+                                radius: 10,
+                                backgroundColor: isLast ? Colors.redAccent : Colors.blueAccent,
+                                child: Text(
+                                  '${stage['step']}',
+                                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                stage['stageName'] ?? 'Escalation Step',
+                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                              ),
+                            ],
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: isLast ? Colors.red.withOpacity(0.15) : Colors.amber.withOpacity(0.15),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              stage['tacticDetected'] ?? 'Pressure',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: isLast ? Colors.redAccent : Colors.amber[800],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        stage['rawMessage'] ?? '',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: isDark ? Colors.grey[300] : Colors.grey[700],
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }),
+              const SizedBox(height: 24),
+            ],
 
             // If Screenshot Scan, Show Image Thumbnail Card
             if (report.isImageScan && report.imageBase64 != null) ...[
