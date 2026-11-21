@@ -3,12 +3,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../services/investigation_service.dart';
 import '../../services/history_service.dart';
 import '../../services/firebase_service.dart';
 import '../widgets/auth_dialog.dart';
 import 'report_screen.dart';
 import 'url_inspector_screen.dart';
+import 'settings_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   final Function(int)? onNavigateTab;
@@ -36,6 +38,19 @@ class HomeScreenState extends State<HomeScreen> {
   bool _preferOnDevice = true;
   bool _isAnalyzing = false;
   String _analysisStatus = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPreference();
+  }
+
+  Future<void> _loadPreference() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _preferOnDevice = prefs.getBool('setting_prefer_on_device') ?? true;
+    });
+  }
 
   void setInputText(String text) {
     setState(() {
@@ -119,9 +134,20 @@ class HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  void _openSettings() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => SettingsScreen(
+          preferOnDevice: _preferOnDevice,
+          onPreferOnDeviceChanged: (val) => setState(() => _preferOnDevice = val),
+        ),
+      ),
+    );
+  }
+
   Future<void> _runInvestigation() async {
     if (_selectedInputMode == 2) {
-      // Threat Chain Investigation
       if (_chainMessages.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -152,7 +178,6 @@ class HomeScreenState extends State<HomeScreen> {
           forceLocalOnly: _preferOnDevice,
         );
 
-        // Local and Cloud sync
         await HistoryService.saveReport(report);
         await FirebaseService.syncInvestigationToCloud(report);
 
@@ -164,9 +189,7 @@ class HomeScreenState extends State<HomeScreen> {
 
         Navigator.push(
           context,
-          MaterialPageRoute(
-            builder: (context) => ReportScreen(report: report),
-          ),
+          MaterialPageRoute(builder: (context) => ReportScreen(report: report)),
         );
       } catch (e) {
         if (!mounted) return;
@@ -182,7 +205,6 @@ class HomeScreenState extends State<HomeScreen> {
     }
 
     if (_selectedInputMode == 1) {
-      // Screenshot Investigation
       if (_selectedImageBytes == null) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -226,9 +248,7 @@ class HomeScreenState extends State<HomeScreen> {
 
         Navigator.push(
           context,
-          MaterialPageRoute(
-            builder: (context) => ReportScreen(report: report),
-          ),
+          MaterialPageRoute(builder: (context) => ReportScreen(report: report)),
         );
       } catch (e) {
         if (!mounted) return;
@@ -243,7 +263,6 @@ class HomeScreenState extends State<HomeScreen> {
       return;
     }
 
-    // Text Investigation
     final text = _controller.text.trim();
     if (text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -286,9 +305,7 @@ class HomeScreenState extends State<HomeScreen> {
 
       Navigator.push(
         context,
-        MaterialPageRoute(
-          builder: (context) => ReportScreen(report: report),
-        ),
+        MaterialPageRoute(builder: (context) => ReportScreen(report: report)),
       );
     } catch (e) {
       if (!mounted) return;
@@ -359,9 +376,9 @@ class HomeScreenState extends State<HomeScreen> {
             },
           ),
           IconButton(
-            icon: const Icon(Icons.history_outlined),
-            tooltip: 'Past Investigations',
-            onPressed: () => widget.onNavigateTab?.call(3),
+            icon: const Icon(Icons.settings_outlined),
+            tooltip: 'Engine Settings',
+            onPressed: _openSettings,
           ),
         ],
       ),
@@ -370,35 +387,49 @@ class HomeScreenState extends State<HomeScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Engine Health Status Bar
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-              decoration: BoxDecoration(
-                color: const Color(0xFF10B981).withOpacity(0.08),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: const Color(0xFF10B981).withOpacity(0.25)),
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    width: 8,
-                    height: 8,
-                    decoration: const BoxDecoration(
-                      color: Color(0xFF10B981),
-                      shape: BoxShape.circle,
+            // Engine Health Status Bar (Tappable to open settings)
+            InkWell(
+              onTap: _openSettings,
+              borderRadius: BorderRadius.circular(10),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: _preferOnDevice
+                        ? const Color(0xFF10B981).withOpacity(0.3)
+                        : const Color(0xFF6366F1).withOpacity(0.3),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 8,
+                      height: 8,
+                      decoration: BoxDecoration(
+                        color: _preferOnDevice ? const Color(0xFF10B981) : const Color(0xFF6366F1),
+                        shape: BoxShape.circle,
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  const Text(
-                    'Hybrid Engine Active:',
-                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF10B981)),
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    'On-Device Nano + Gemini Cloud Core',
-                    style: TextStyle(fontSize: 11, color: isDark ? Colors.grey[300] : Colors.grey[800]),
-                  ),
-                ],
+                    const SizedBox(width: 8),
+                    Text(
+                      _preferOnDevice ? 'On-Device Shield Active' : 'Cloud AI Investigator Active',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: _preferOnDevice ? const Color(0xFF10B981) : const Color(0xFF6366F1),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      _preferOnDevice ? '• 100% Private (Gemini Nano)' : '• Gemini Flash via Firebase',
+                      style: TextStyle(fontSize: 11, color: isDark ? Colors.grey[400] : Colors.grey[600]),
+                    ),
+                    const Spacer(),
+                    const Icon(Icons.tune_rounded, size: 14, color: Colors.grey),
+                  ],
+                ),
               ),
             ),
             const SizedBox(height: 14),
@@ -419,55 +450,7 @@ class HomeScreenState extends State<HomeScreen> {
                 ],
               ),
             ),
-            const SizedBox(height: 14),
-
-            // Hybrid Inference Setting Switch
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              decoration: BoxDecoration(
-                color: isDark ? const Color(0xFF1E293B) : Colors.white,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: isDark ? Colors.white10 : Colors.black12),
-              ),
-              child: Row(
-                children: [
-                  Icon(
-                    _preferOnDevice ? Icons.bolt_rounded : Icons.cloud_done_rounded,
-                    color: _preferOnDevice ? const Color(0xFF10B981) : const Color(0xFF6366F1),
-                    size: 24,
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          _preferOnDevice
-                              ? 'On-Device Shield (Gemini Nano)'
-                              : 'Cloud AI (Gemini Flash Correlation)',
-                          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
-                        ),
-                        Text(
-                          _preferOnDevice
-                              ? 'Zero-leakage local triage • 100% Private'
-                              : 'Deep forensic reasoning via Firebase AI Logic',
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: isDark ? Colors.grey[400] : Colors.grey[600],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Switch(
-                    value: _preferOnDevice,
-                    activeColor: const Color(0xFF10B981),
-                    onChanged: (val) => setState(() => _preferOnDevice = val),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 16),
 
             // Mode 2: Multi-Message Threat Chain UI
             if (_selectedInputMode == 2) ...[
@@ -487,7 +470,6 @@ class HomeScreenState extends State<HomeScreen> {
               ),
               const SizedBox(height: 8),
 
-              // Existing Chain Messages
               if (_chainMessages.isEmpty) ...[
                 Container(
                   width: double.infinity,
@@ -557,7 +539,6 @@ class HomeScreenState extends State<HomeScreen> {
               ],
               const SizedBox(height: 12),
 
-              // Add Message Input Box
               Container(
                 decoration: BoxDecoration(
                   color: isDark ? const Color(0xFF1E293B) : Colors.white,
