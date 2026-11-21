@@ -1,0 +1,413 @@
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import '../../services/investigation_service.dart';
+import '../../services/history_service.dart';
+import 'report_screen.dart';
+
+class HomeScreen extends StatefulWidget {
+  final Function(int)? onNavigateTab;
+
+  const HomeScreen({super.key, this.onNavigateTab});
+
+  @override
+  State<HomeScreen> createState() => HomeScreenState();
+}
+
+class HomeScreenState extends State<HomeScreen> {
+  final TextEditingController _controller = TextEditingController();
+  final InvestigationService _investigationService = InvestigationService();
+  bool _preferOnDevice = true;
+  bool _isAnalyzing = false;
+  String _analysisStatus = '';
+
+  void setInputText(String text) {
+    setState(() {
+      _controller.text = text;
+    });
+  }
+
+  Future<void> _runInvestigation() async {
+    final text = _controller.text.trim();
+    if (text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please enter or paste a suspicious message to investigate.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      _isAnalyzing = true;
+      _analysisStatus = '1. Scrubbing sensitive PII locally on device...';
+    });
+
+    await Future.delayed(const Duration(milliseconds: 400));
+    if (!mounted) return;
+
+    setState(() {
+      _analysisStatus = _preferOnDevice
+          ? '2. Running On-Device Gemini Nano Shield & Lexical Audit...'
+          : '2. Querying Firebase AI Logic Cloud Investigator...';
+    });
+
+    await Future.delayed(const Duration(milliseconds: 500));
+    if (!mounted) return;
+
+    try {
+      final report = await _investigationService.investigate(
+        text: text,
+        forceLocalOnly: _preferOnDevice,
+      );
+
+      // Save to local history
+      await HistoryService.saveReport(report);
+
+      if (!mounted) return;
+      setState(() {
+        _isAnalyzing = false;
+        _analysisStatus = '';
+      });
+
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => ReportScreen(report: report),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isAnalyzing = false;
+        _analysisStatus = '';
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Investigation error: $e'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: Colors.blueAccent.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(Icons.security, color: Colors.blueAccent, size: 20),
+            ),
+            const SizedBox(width: 10),
+            const Text(
+              'Traceback',
+              style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 0.5),
+            ),
+          ],
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.history_outlined),
+            tooltip: 'Past Investigations',
+            onPressed: () => widget.onNavigateTab?.call(2),
+          ),
+        ],
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Hero Intro Banner
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(18),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: isDark
+                      ? [const Color(0xFF1E293B), const Color(0xFF0F172A)]
+                      : [const Color(0xFFEFF6FF), const Color(0xFFDBEAFE)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(
+                  color: isDark ? Colors.white10 : Colors.blue.withOpacity(0.2),
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.shield_outlined, color: Colors.blue[600], size: 24),
+                      const SizedBox(width: 8),
+                      const Text(
+                        'AI Scam & Fraud Shield',
+                        style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Analyze suspicious SMS, WhatsApp messages, banking alerts, and links. Detect urgency traps and credential theft with privacy-first Hybrid AI.',
+                    style: TextStyle(
+                      fontSize: 13,
+                      height: 1.4,
+                      color: isDark ? Colors.grey[300] : Colors.grey[700],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
+
+            // Hybrid Inference Setting Switch
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: isDark ? Colors.white10 : Colors.black12),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    _preferOnDevice ? Icons.bolt_rounded : Icons.cloud_done_rounded,
+                    color: _preferOnDevice ? const Color(0xFF10B981) : const Color(0xFF6366F1),
+                    size: 24,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _preferOnDevice ? 'On-Device Shield (Gemini Nano)' : 'Cloud AI (Gemini Flash)',
+                          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                        ),
+                        Text(
+                          _preferOnDevice
+                              ? 'Zero-leakage local triage • 100% Private'
+                              : 'Deep forensic reasoning via Firebase AI Logic',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: isDark ? Colors.grey[400] : Colors.grey[600],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Switch(
+                    value: _preferOnDevice,
+                    activeColor: const Color(0xFF10B981),
+                    onChanged: (val) => setState(() => _preferOnDevice = val),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
+
+            // Text Input Box
+            Text(
+              'Suspicious Content to Investigate',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                color: isDark ? Colors.white : Colors.black87,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Container(
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: isDark ? Colors.white10 : Colors.black12),
+              ),
+              child: Column(
+                children: [
+                  TextField(
+                    controller: _controller,
+                    maxLines: 5,
+                    decoration: InputDecoration(
+                      hintText:
+                          'Paste an SMS, WhatsApp message, email body, or suspicious URL here...',
+                      hintStyle: TextStyle(
+                        fontSize: 13,
+                        color: isDark ? Colors.grey[500] : Colors.grey[400],
+                      ),
+                      contentPadding: const EdgeInsets.all(16),
+                      border: InputBorder.none,
+                    ),
+                  ),
+                  Divider(height: 1, color: isDark ? Colors.white10 : Colors.black12),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        TextButton.icon(
+                          onPressed: () async {
+                            final data = await Clipboard.getData('text/plain');
+                            if (data?.text != null && data!.text!.isNotEmpty) {
+                              setState(() => _controller.text = data.text!);
+                            }
+                          },
+                          icon: const Icon(Icons.paste_rounded, size: 16),
+                          label: const Text('Paste', style: TextStyle(fontSize: 12)),
+                        ),
+                        if (_controller.text.isNotEmpty)
+                          TextButton(
+                            onPressed: () => setState(() => _controller.clear()),
+                            child: const Text('Clear', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                          ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // Investigate Action Button
+            SizedBox(
+              width: double.infinity,
+              height: 52,
+              child: FilledButton.icon(
+                onPressed: _isAnalyzing ? null : _runInvestigation,
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFF2563EB),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                ),
+                icon: _isAnalyzing
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      )
+                    : const Icon(Icons.manage_search_rounded, size: 22),
+                label: Text(
+                  _isAnalyzing ? _analysisStatus : 'Investigate Threat',
+                  style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+                ),
+              ),
+            ),
+            const SizedBox(height: 28),
+
+            // Preset Test Scenarios (Instant Judge Demo)
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Quick Test Scenarios',
+                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+                ),
+                TextButton(
+                  onPressed: () => widget.onNavigateTab?.call(1),
+                  child: const Text('View All Radar', style: TextStyle(fontSize: 12)),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            _buildSampleTile(
+              title: 'Bank KYC Account Suspension',
+              category: 'Phishing Link',
+              text:
+                  'Dear Customer, Your SBI netbanking account has been suspended today due to missing PAN card verification. Click here to verify and restore access immediately: http://sbi-kyc-update.live/portal',
+              icon: Icons.account_balance,
+              color: Colors.redAccent,
+            ),
+            _buildSampleTile(
+              title: 'Electricity Disconnection Tonight',
+              category: 'Urgency Trap',
+              text:
+                  'Dear Consumer, Your electricity will be disconnected tonight at 9:30 PM because your previous month bill was not updated. Please immediately contact our power officer at 98123-45678.',
+              icon: Icons.bolt,
+              color: Colors.orangeAccent,
+            ),
+            _buildSampleTile(
+              title: 'Digital Arrest by Police / Customs',
+              category: 'Authority Extortion',
+              text:
+                  'Illegal narcotics parcel detected in your name at Mumbai Airport customs. Arrest warrant issued by Crime Branch. Join Skype session immediately for digital arrest inquiry.',
+              icon: Icons.gavel,
+              color: Colors.deepPurpleAccent,
+            ),
+            _buildSampleTile(
+              title: 'Legitimate Bank Transaction (Control)',
+              category: 'Benign Alert',
+              text:
+                  'Dear Customer, INR 450.00 debited from A/C XX8912 at Grocery Store on 21-Nov-2026. Available balance: INR 14,230.50. If not done by you, SMS BLOCK to 567676.',
+              icon: Icons.check_circle_outline,
+              color: Colors.green,
+            ),
+            const SizedBox(height: 32),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSampleTile({
+    required String title,
+    required String category,
+    required String text,
+    required IconData icon,
+    required Color color,
+  }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Card(
+      elevation: 0,
+      margin: const EdgeInsets.only(bottom: 10),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: isDark ? Colors.white10 : Colors.black12),
+      ),
+      child: ListTile(
+        onTap: () {
+          setState(() => _controller.text = text);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Loaded scenario: $title'),
+              duration: const Duration(seconds: 1),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        },
+        leading: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.12),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(icon, color: color, size: 20),
+        ),
+        title: Text(
+          title,
+          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+        ),
+        subtitle: Text(
+          category,
+          style: TextStyle(fontSize: 11, color: isDark ? Colors.grey[400] : Colors.grey[600]),
+        ),
+        trailing: const Icon(Icons.arrow_forward_ios, size: 12),
+      ),
+    );
+  }
+}
