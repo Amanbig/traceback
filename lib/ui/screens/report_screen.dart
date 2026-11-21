@@ -2,6 +2,8 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../models/threat_report.dart';
+import '../../models/scam_radar_item.dart';
+import '../../services/firebase_service.dart';
 import '../widgets/threat_gauge.dart';
 import '../widgets/hybrid_badge.dart';
 import '../widgets/pii_preview_card.dart';
@@ -465,10 +467,149 @@ ${report.safeNextSteps.map((s) => '• $s').join('\n')}
               originalText: report.originalSnippet,
               maskedText: report.maskedSnippet,
             ),
+            const SizedBox(height: 20),
+
+            // Community Contribution Button
+            if (report.riskScore >= 40) ...[
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.tonalIcon(
+                  onPressed: () => _reportToRadar(context),
+                  icon: const Icon(Icons.add_alert_rounded, size: 18),
+                  label: const Text('Contribute Anonymized Pattern to Radar'),
+                  style: FilledButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Center(
+                child: Text(
+                  'Zero-Leakage: All names, numbers & accounts are scrubbed before publishing.',
+                  style: TextStyle(fontSize: 11, color: Colors.grey),
+                ),
+              ),
+            ],
             const SizedBox(height: 32),
           ],
         ),
       ),
+    );
+  }
+
+  void _reportToRadar(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        bool isSubmitting = false;
+        return StatefulBuilder(
+          builder: (ctx, setDialogState) {
+            return AlertDialog(
+              title: const Row(
+                children: [
+                  Icon(Icons.add_alert_rounded, color: Colors.blueAccent),
+                  SizedBox(width: 10),
+                  Text('Contribute to Radar',
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                ],
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Share this anonymized scam pattern with the community to alert other citizens.',
+                    style: TextStyle(fontSize: 13),
+                  ),
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF10B981).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: const Color(0xFF10B981).withOpacity(0.3)),
+                    ),
+                    child: const Row(
+                      children: [
+                        Icon(Icons.security, size: 16, color: Color(0xFF10B981)),
+                        SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'All personal data (names, accounts, numbers) has already been scrubbed on-device.',
+                            style: TextStyle(fontSize: 11, color: Color(0xFF10B981)),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  const Text('Sanitized Pattern Preview:',
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                  const SizedBox(height: 4),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.05),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      report.maskedSnippet,
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontFamily: 'monospace', fontSize: 11),
+                    ),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: isSubmitting ? null : () => Navigator.pop(ctx),
+                  child: const Text('Cancel'),
+                ),
+                FilledButton.icon(
+                  onPressed: isSubmitting
+                      ? null
+                      : () async {
+                          setDialogState(() => isSubmitting = true);
+                          final item = ScamRadarItem(
+                            id: DateTime.now().millisecondsSinceEpoch.toString(),
+                            title: report.tactics.isNotEmpty
+                                ? report.tactics.first
+                                : 'Reported Scam Pattern',
+                            category: report.tactics.isNotEmpty
+                                ? report.tactics.first
+                                : 'Cyber Fraud',
+                            sampleText: report.maskedSnippet,
+                            severity: report.riskScore >= 75 ? 'Critical' : 'High',
+                            targetAudience: 'General Citizens',
+                            modusOperandi: report.summary,
+                            warningSigns: report.redFlags,
+                            safetyTip: report.safeNextSteps.isNotEmpty
+                                ? report.safeNextSteps.first
+                                : 'Do not reply or click any links in this message.',
+                          );
+                          await FirebaseService.submitCommunityScam(item);
+                          if (ctx.mounted) {
+                            Navigator.pop(ctx);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                    'Thank you! Scam pattern contributed to Community Radar.'),
+                                backgroundColor: Color(0xFF10B981),
+                                behavior: SnackBarBehavior.floating,
+                              ),
+                            );
+                          }
+                        },
+                  icon: const Icon(Icons.send_rounded, size: 16),
+                  label: Text(isSubmitting ? 'Contributing...' : 'Submit to Radar'),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 }

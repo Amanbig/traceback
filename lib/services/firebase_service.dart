@@ -101,6 +101,9 @@ class FirebaseService {
   static Future<void> signOut() async {
     if (!_initialized) return;
     await FirebaseAuth.instance.signOut();
+    try {
+      await FirebaseAuth.instance.signInAnonymously();
+    } catch (_) {}
   }
 
   /// Syncs an investigation report to the user's private cloud history in Firestore
