@@ -1,11 +1,11 @@
 {
-    "name": "traceback",
-    "short_name": "traceback",
+    "name": "Traceback — AI Digital Scam Investigator",
+    "short_name": "Traceback",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#0F172A",
+    "theme_color": "#0F172A",
+    "description": "AI digital scam and fraud forensics investigator powered by Hybrid AI.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

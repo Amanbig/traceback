@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'services/firebase_service.dart';
-import 'ui/screens/main_navigation_screen.dart';
+import 'ui/screens/splash_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -19,7 +19,7 @@ class TracebackApp extends StatelessWidget {
     return MaterialApp(
       title: 'Traceback — AI Digital Scam Investigator',
       debugShowCheckedModeBanner: false,
-      themeMode: ThemeMode.system,
+      themeMode: ThemeMode.dark, // Default to deep cyber theme
       theme: ThemeData(
         useMaterial3: true,
         brightness: Brightness.light,
@@ -46,7 +46,7 @@ class TracebackApp extends StatelessWidget {
           backgroundColor: Colors.transparent,
         ),
       ),
-      home: const MainNavigationScreen(),
+      home: const SplashScreen(),
     );
   }
 }
