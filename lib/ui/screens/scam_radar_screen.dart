@@ -297,10 +297,9 @@ class _ScamRadarScreenState extends State<ScamRadarScreen> {
                     child: OutlinedButton.icon(
                       onPressed: () {
                         widget.onSelectSample!(scam.sampleText);
-                        Navigator.pop(context);
                       },
-                      icon: const Icon(Icons.biotech_outlined, size: 18),
-                      label: const Text('Test This Scenario in Investigator'),
+                      icon: const Icon(Icons.shield_outlined, size: 18),
+                      label: const Text('Investigate This Pattern'),
                     ),
                   ),
               ],

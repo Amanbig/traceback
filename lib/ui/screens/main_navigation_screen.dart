@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'home_screen.dart';
+import 'dashboard_screen.dart';
+import 'investigate_screen.dart';
 import 'scam_radar_screen.dart';
 import 'emergency_toolkit_screen.dart';
 import 'history_screen.dart';
@@ -13,20 +14,20 @@ class MainNavigationScreen extends StatefulWidget {
 
 class _MainNavigationScreenState extends State<MainNavigationScreen> {
   int _currentIndex = 0;
-  final GlobalKey<HomeScreenState> _homeKey = GlobalKey<HomeScreenState>();
 
   void _onSelectSampleFromRadar(String sampleText) {
-    setState(() => _currentIndex = 0);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _homeKey.currentState?.setInputText(sampleText);
-    });
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => InvestigateScreen(initialText: sampleText),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final screens = [
-      HomeScreen(
-        key: _homeKey,
+      DashboardScreen(
         onNavigateTab: (index) => setState(() => _currentIndex = index),
       ),
       ScamRadarScreen(onSelectSample: _onSelectSampleFromRadar),
@@ -44,9 +45,9 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
         onDestinationSelected: (idx) => setState(() => _currentIndex = idx),
         destinations: const [
           NavigationDestination(
-            icon: Icon(Icons.shield_outlined),
-            selectedIcon: Icon(Icons.shield),
-            label: 'Investigate',
+            icon: Icon(Icons.dashboard_outlined),
+            selectedIcon: Icon(Icons.dashboard),
+            label: 'Dashboard',
           ),
           NavigationDestination(
             icon: Icon(Icons.radar_outlined),

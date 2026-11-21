@@ -1,37 +1,37 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../services/investigation_service.dart';
 import '../../services/history_service.dart';
 import '../../services/firebase_service.dart';
-import '../widgets/auth_dialog.dart';
 import 'report_screen.dart';
-import 'url_inspector_screen.dart';
 import 'settings_screen.dart';
 
-class HomeScreen extends StatefulWidget {
-  final Function(int)? onNavigateTab;
+class InvestigateScreen extends StatefulWidget {
+  final int initialMode; // 0: Single Text, 1: Screenshot, 2: Threat Chain
+  final String? initialText;
 
-  const HomeScreen({super.key, this.onNavigateTab});
+  const InvestigateScreen({
+    super.key,
+    this.initialMode = 0,
+    this.initialText,
+  });
 
   @override
-  State<HomeScreen> createState() => HomeScreenState();
+  State<InvestigateScreen> createState() => _InvestigateScreenState();
 }
 
-class HomeScreenState extends State<HomeScreen> {
+class _InvestigateScreenState extends State<InvestigateScreen> {
   final TextEditingController _controller = TextEditingController();
   final InvestigationService _investigationService = InvestigationService();
   final ImagePicker _picker = ImagePicker();
 
-  int _selectedInputMode = 0; // 0: Single Text/Link, 1: Screenshot, 2: Threat Chain
+  late int _selectedInputMode;
   Uint8List? _selectedImageBytes;
   String? _selectedImageMime;
   String? _selectedImageName;
 
-  // Threat Chain state
   final List<String> _chainMessages = [];
   final TextEditingController _chainInputController = TextEditingController();
 
@@ -42,6 +42,10 @@ class HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
+    _selectedInputMode = widget.initialMode;
+    if (widget.initialText != null) {
+      _controller.text = widget.initialText!;
+    }
     _loadPreference();
   }
 
@@ -52,14 +56,7 @@ class HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  void setInputText(String text) {
-    setState(() {
-      _selectedInputMode = 0;
-      _controller.text = text;
-    });
-  }
-
-  Future<void> _pickScreenshot() async {
+  Future<void> _pickFromGallery() async {
     try {
       final XFile? file = await _picker.pickImage(
         source: ImageSource.gallery,
@@ -78,7 +75,7 @@ class HomeScreenState extends State<HomeScreen> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to pick screenshot: $e')),
+        SnackBar(content: Text('Failed to pick image: $e')),
       );
     }
   }
@@ -107,41 +104,6 @@ class HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  void _loadDemoScreenshot() {
-    const demoBase64 =
-        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
-    setState(() {
-      _selectedImageBytes = base64Decode(demoBase64);
-      _selectedImageMime = 'image/png';
-      _selectedImageName = 'whatsapp_scam_chat.png';
-      _controller.text =
-          'User notes: This WhatsApp message came from an unknown UK number claiming my Aadhaar card is blocked.';
-    });
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Loaded sample screenshot scenario for investigation!'),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
-  }
-
-  void _loadDemoChain() {
-    setState(() {
-      _chainMessages.clear();
-      _chainMessages.addAll([
-        'FedEx Notice: Parcel #FX-9201 addressed to you containing 5 illegal passports and fake credit cards detained at Mumbai Airport Customs. Contact customs clearance immediately.',
-        'Cyber Crime Officer Sharma: An arrest warrant has been prepared under your Aadhaar. Connect to official Skype video link immediately for digital arrest inquiry.',
-        'Urgent Notice: To avoid immediate physical dispatch of police team to your house, deposit ₹85,000 RBI verification security bond. Refundable in 2 hours.',
-      ]);
-    });
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Loaded 3-step Digital Arrest escalation thread!'),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
-  }
-
   void _addMessageToChain() {
     final text = _chainInputController.text.trim();
     if (text.isEmpty) return;
@@ -149,25 +111,6 @@ class HomeScreenState extends State<HomeScreen> {
       _chainMessages.add(text);
       _chainInputController.clear();
     });
-  }
-
-  void _showAuth() {
-    showDialog(
-      context: context,
-      builder: (context) => const AuthDialog(),
-    );
-  }
-
-  void _openSettings() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => SettingsScreen(
-          preferOnDevice: _preferOnDevice,
-          onPreferOnDeviceChanged: (val) => setState(() => _preferOnDevice = val),
-        ),
-      ),
-    );
   }
 
   Future<void> _runInvestigation() async {
@@ -232,7 +175,7 @@ class HomeScreenState extends State<HomeScreen> {
       if (_selectedImageBytes == null) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Please select or upload a screenshot to investigate.'),
+            content: Text('Please select or capture a screenshot to investigate.'),
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -356,53 +299,23 @@ class HomeScreenState extends State<HomeScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                color: Colors.blueAccent.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Icon(Icons.security, color: Colors.blueAccent, size: 20),
-            ),
-            const SizedBox(width: 10),
-            const Text(
-              'Traceback',
-              style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 0.5),
-            ),
-          ],
-        ),
+        title: const Text('Investigation Workbench',
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
         actions: [
-          StreamBuilder<User?>(
-            stream: FirebaseService.authStateChanges(),
-            builder: (context, snapshot) {
-              final user = snapshot.data ?? FirebaseService.currentUser;
-              final isAnonymous = user?.isAnonymous ?? true;
-              return TextButton.icon(
-                onPressed: _showAuth,
-                icon: Icon(
-                  user != null && !isAnonymous ? Icons.account_circle : Icons.person_outline,
-                  size: 18,
-                  color: user != null && !isAnonymous ? const Color(0xFF10B981) : Colors.grey,
-                ),
-                label: Text(
-                  user != null && !isAnonymous
-                      ? (user.email?.split('@').first ?? 'Defender')
-                      : 'Sign In',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    color: user != null && !isAnonymous ? const Color(0xFF10B981) : Colors.grey,
+          IconButton(
+            icon: const Icon(Icons.settings_outlined),
+            tooltip: 'Engine Settings',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => SettingsScreen(
+                    preferOnDevice: _preferOnDevice,
+                    onPreferOnDeviceChanged: (val) => setState(() => _preferOnDevice = val),
                   ),
                 ),
               );
             },
-          ),
-          IconButton(
-            icon: const Icon(Icons.settings_outlined),
-            tooltip: 'Engine Settings',
-            onPressed: _openSettings,
           ),
         ],
       ),
@@ -411,54 +324,7 @@ class HomeScreenState extends State<HomeScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Engine Health Status Bar (Tappable to open settings)
-            InkWell(
-              onTap: _openSettings,
-              borderRadius: BorderRadius.circular(10),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                decoration: BoxDecoration(
-                  color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(
-                    color: _preferOnDevice
-                        ? const Color(0xFF10B981).withOpacity(0.3)
-                        : const Color(0xFF6366F1).withOpacity(0.3),
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 8,
-                      height: 8,
-                      decoration: BoxDecoration(
-                        color: _preferOnDevice ? const Color(0xFF10B981) : const Color(0xFF6366F1),
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      _preferOnDevice ? 'On-Device Shield Active' : 'Cloud AI Investigator Active',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                        color: _preferOnDevice ? const Color(0xFF10B981) : const Color(0xFF6366F1),
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      _preferOnDevice ? '• 100% Private (Gemini Nano)' : '• Gemini Flash via Firebase',
-                      style: TextStyle(fontSize: 11, color: isDark ? Colors.grey[400] : Colors.grey[600]),
-                    ),
-                    const Spacer(),
-                    const Icon(Icons.tune_rounded, size: 14, color: Colors.grey),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 14),
-
-            // 3-Way Mode Selector: Text vs Screenshot vs Threat Chain
+            // Mode Selector
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(4),
@@ -468,7 +334,7 @@ class HomeScreenState extends State<HomeScreen> {
               ),
               child: Row(
                 children: [
-                  _buildModeTab(0, Icons.text_fields_rounded, 'Single Msg', isDark),
+                  _buildModeTab(0, Icons.text_fields_rounded, 'Message / Link', isDark),
                   _buildModeTab(1, Icons.camera_alt_outlined, 'Screenshot', isDark),
                   _buildModeTab(2, Icons.timeline_rounded, 'Threat Chain', isDark),
                 ],
@@ -478,26 +344,21 @@ class HomeScreenState extends State<HomeScreen> {
 
             // Mode 2: Multi-Message Threat Chain UI
             if (_selectedInputMode == 2) ...[
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    'Multi-Message Escalation Thread',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                  ),
-                  TextButton.icon(
-                    onPressed: _loadDemoChain,
-                    icon: const Icon(Icons.auto_fix_high, size: 16),
-                    label: const Text('Load Demo Chain', style: TextStyle(fontSize: 12)),
-                  ),
-                ],
+              const Text(
+                'Incident Timeline Messages',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 4),
+              Text(
+                'Add consecutive messages to correlate the escalating fraud campaign.',
+                style: TextStyle(fontSize: 12, color: isDark ? Colors.grey[400] : Colors.grey[600]),
+              ),
+              const SizedBox(height: 10),
 
               if (_chainMessages.isEmpty) ...[
                 Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.all(20),
+                  padding: const EdgeInsets.all(24),
                   decoration: BoxDecoration(
                     color: isDark ? const Color(0xFF1E293B) : Colors.white,
                     borderRadius: BorderRadius.circular(14),
@@ -508,14 +369,14 @@ class HomeScreenState extends State<HomeScreen> {
                       const Icon(Icons.timeline_rounded, color: Colors.blueAccent, size: 36),
                       const SizedBox(height: 10),
                       const Text(
-                        'No messages added to thread yet',
-                        style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                        'No messages added to this incident thread',
+                        style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        'Add sequential messages from an escalating scam (e.g. initial SMS ➔ fake phone call notice ➔ payment request)',
+                        'Enter the initial contact message below and tap "Add Step".',
                         textAlign: TextAlign.center,
-                        style: TextStyle(fontSize: 12, color: isDark ? Colors.grey[400] : Colors.grey[600]),
+                        style: TextStyle(fontSize: 11, color: isDark ? Colors.grey[400] : Colors.grey[600]),
                       ),
                     ],
                   ),
@@ -622,7 +483,7 @@ class HomeScreenState extends State<HomeScreen> {
                         borderRadius: BorderRadius.circular(12),
                         child: Image.memory(
                           _selectedImageBytes!,
-                          height: 180,
+                          height: 200,
                           width: double.infinity,
                           fit: BoxFit.cover,
                         ),
@@ -651,10 +512,10 @@ class HomeScreenState extends State<HomeScreen> {
                       ),
                     ] else ...[
                       Icon(Icons.add_photo_alternate_outlined,
-                          size: 48, color: Colors.blueAccent.withOpacity(0.8)),
+                          size: 52, color: Colors.blueAccent.withOpacity(0.8)),
                       const SizedBox(height: 12),
                       const Text(
-                        'Upload a Scam Screenshot',
+                        'Upload Fraud Evidence Image',
                         style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
                       ),
                       const SizedBox(height: 6),
@@ -665,25 +526,19 @@ class HomeScreenState extends State<HomeScreen> {
                             fontSize: 12, color: isDark ? Colors.grey[400] : Colors.grey[600]),
                       ),
                       const SizedBox(height: 16),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        alignment: WrapAlignment.center,
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           FilledButton.icon(
-                            onPressed: _pickScreenshot,
+                            onPressed: _pickFromGallery,
                             icon: const Icon(Icons.photo_library_outlined, size: 16),
-                            label: const Text('Gallery', style: TextStyle(fontSize: 12)),
+                            label: const Text('Gallery / Files'),
                           ),
+                          const SizedBox(width: 12),
                           FilledButton.tonalIcon(
                             onPressed: _captureWithCamera,
                             icon: const Icon(Icons.camera_alt_outlined, size: 16),
-                            label: const Text('Camera', style: TextStyle(fontSize: 12)),
-                          ),
-                          OutlinedButton.icon(
-                            onPressed: _loadDemoScreenshot,
-                            icon: const Icon(Icons.science_outlined, size: 16),
-                            label: const Text('Demo Sample', style: TextStyle(fontSize: 12)),
+                            label: const Text('Take Photo'),
                           ),
                         ],
                       ),
@@ -696,7 +551,7 @@ class HomeScreenState extends State<HomeScreen> {
                 controller: _controller,
                 maxLines: 2,
                 decoration: InputDecoration(
-                  hintText: 'Optional notes (e.g. "Received via WhatsApp from +44 number")...',
+                  hintText: 'Optional context (e.g. "Received via WhatsApp from +44 number")...',
                   hintStyle: TextStyle(
                     fontSize: 12,
                     color: isDark ? Colors.grey[500] : Colors.grey[400],
@@ -711,13 +566,9 @@ class HomeScreenState extends State<HomeScreen> {
               ),
             ] else ...[
               // Mode 0: Single Text / Link Input UI
-              Text(
-                'Suspicious Message or Link',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                  color: isDark ? Colors.white : Colors.black87,
-                ),
+              const Text(
+                'Suspicious Message Text or Link',
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 8),
               Container(
@@ -730,10 +581,10 @@ class HomeScreenState extends State<HomeScreen> {
                   children: [
                     TextField(
                       controller: _controller,
-                      maxLines: 5,
+                      maxLines: 6,
                       decoration: InputDecoration(
                         hintText:
-                            'Paste an SMS, WhatsApp message, email body, or suspicious URL here...',
+                            'Paste the suspicious SMS, WhatsApp message, email body, or URL here...',
                         hintStyle: TextStyle(
                           fontSize: 13,
                           color: isDark ? Colors.grey[500] : Colors.grey[400],
@@ -756,7 +607,7 @@ class HomeScreenState extends State<HomeScreen> {
                               }
                             },
                             icon: const Icon(Icons.paste_rounded, size: 16),
-                            label: const Text('Paste', style: TextStyle(fontSize: 12)),
+                            label: const Text('Paste from Clipboard', style: TextStyle(fontSize: 12)),
                           ),
                           if (_controller.text.isNotEmpty)
                             TextButton(
@@ -772,7 +623,7 @@ class HomeScreenState extends State<HomeScreen> {
               ),
             ],
 
-            const SizedBox(height: 18),
+            const SizedBox(height: 24),
 
             // Investigate Action Button
             SizedBox(
@@ -805,77 +656,10 @@ class HomeScreenState extends State<HomeScreen> {
                           ? 'Correlate Threat Chain (${_chainMessages.length} msgs)'
                           : _selectedInputMode == 1
                               ? 'Investigate Screenshot'
-                              : 'Investigate Threat'),
+                              : 'Execute Forensic Audit'),
                   style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
                 ),
               ),
-            ),
-            const SizedBox(height: 20),
-
-            // URL Inspector Quick Banner
-            OutlinedButton.icon(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const UrlInspectorScreen()),
-                );
-              },
-              style: OutlinedButton.styleFrom(
-                minimumSize: const Size(double.infinity, 48),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-              icon: const Icon(Icons.travel_explore_rounded, size: 20, color: Colors.blueAccent),
-              label: const Text('Open URL & Phishing Inspector',
-                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-            ),
-            const SizedBox(height: 24),
-
-            // Quick Test Scenarios
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  'Quick Test Scenarios',
-                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
-                ),
-                TextButton(
-                  onPressed: () => widget.onNavigateTab?.call(1),
-                  child: const Text('View All Radar', style: TextStyle(fontSize: 12)),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            _buildSampleTile(
-              title: 'Bank KYC Account Suspension',
-              category: 'Phishing Link',
-              text:
-                  'Dear Customer, Your SBI netbanking account has been suspended today due to missing PAN card verification. Click here to verify and restore access immediately: http://sbi-kyc-update.live/portal',
-              icon: Icons.account_balance,
-              color: Colors.redAccent,
-            ),
-            _buildSampleTile(
-              title: 'Electricity Disconnection Tonight',
-              category: 'Urgency Trap',
-              text:
-                  'Dear Consumer, Your electricity will be disconnected tonight at 9:30 PM because your previous month bill was not updated. Please immediately contact our power officer at 98123-45678.',
-              icon: Icons.bolt,
-              color: Colors.orangeAccent,
-            ),
-            _buildSampleTile(
-              title: 'Digital Arrest by Police / Customs',
-              category: 'Authority Extortion',
-              text:
-                  'Illegal narcotics parcel detected in your name at Mumbai Airport customs. Arrest warrant issued by Crime Branch. Join Skype session immediately for digital arrest inquiry.',
-              icon: Icons.gavel,
-              color: Colors.deepPurpleAccent,
-            ),
-            _buildSampleTile(
-              title: 'Legitimate Bank Transaction (Control)',
-              category: 'Benign Alert',
-              text:
-                  'Dear Customer, INR 450.00 debited from A/C XX8912 at Grocery Store on 21-Nov-2026. Available balance: INR 14,230.50. If not done by you, SMS BLOCK to 567676.',
-              icon: Icons.check_circle_outline,
-              color: Colors.green,
             ),
             const SizedBox(height: 32),
           ],
@@ -929,57 +713,6 @@ class HomeScreenState extends State<HomeScreen> {
             ],
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildSampleTile({
-    required String title,
-    required String category,
-    required String text,
-    required IconData icon,
-    required Color color,
-  }) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return Card(
-      elevation: 0,
-      margin: const EdgeInsets.only(bottom: 10),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: isDark ? Colors.white10 : Colors.black12),
-      ),
-      child: ListTile(
-        onTap: () {
-          setState(() {
-            _selectedInputMode = 0;
-            _controller.text = text;
-          });
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Loaded scenario: $title'),
-              duration: const Duration(seconds: 1),
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
-        },
-        leading: Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: color.withOpacity(0.12),
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Icon(icon, color: color, size: 20),
-        ),
-        title: Text(
-          title,
-          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
-        ),
-        subtitle: Text(
-          category,
-          style: TextStyle(fontSize: 11, color: isDark ? Colors.grey[400] : Colors.grey[600]),
-        ),
-        trailing: const Icon(Icons.arrow_forward_ios, size: 12),
       ),
     );
   }
