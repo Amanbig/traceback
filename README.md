@@ -2,6 +2,7 @@
 ### AI Digital Scam & Fraud Forensics Engine
 
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[![Live Demo](https://img.shields.io/badge/Live%20App-gem--app--2adf0.web.app-brightgreen?logo=firebase)](https://gem-app-2adf0.web.app)
 [![Flutter](https://img.shields.io/badge/Flutter-v3.24%2B-02569B?logo=flutter)](https://flutter.dev)
 [![Firebase AI Logic](https://img.shields.io/badge/AI-Firebase%20AI%20Logic-FFCA28?logo=firebase)](https://firebase.google.com/docs/ai-logic)
 [![Platforms](https://img.shields.io/badge/Platforms-Android%20%7C%20Web-4285F4)](#getting-started)
