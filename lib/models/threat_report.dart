@@ -20,6 +20,8 @@ class ThreatReport {
   final List<String> safeNextSteps;
   final bool isLocalInference; // True if analyzed on-device
   final DateTime createdAt;
+  final String? imageBase64; // Screenshot if multimodal scan
+  final bool isImageScan;
 
   ThreatReport({
     required this.id,
@@ -33,6 +35,8 @@ class ThreatReport {
     required this.safeNextSteps,
     required this.isLocalInference,
     required this.createdAt,
+    this.imageBase64,
+    this.isImageScan = false,
   });
 
   Map<String, dynamic> toMap() {
@@ -48,6 +52,8 @@ class ThreatReport {
       'safeNextSteps': safeNextSteps,
       'isLocalInference': isLocalInference,
       'createdAt': createdAt.toIso8601String(),
+      'imageBase64': imageBase64,
+      'isImageScan': isImageScan,
     };
   }
 
@@ -67,6 +73,8 @@ class ThreatReport {
       safeNextSteps: List<String>.from(map['safeNextSteps'] ?? []),
       isLocalInference: map['isLocalInference'] as bool? ?? false,
       createdAt: DateTime.tryParse(map['createdAt'] ?? '') ?? DateTime.now(),
+      imageBase64: map['imageBase64'] as String?,
+      isImageScan: map['isImageScan'] as bool? ?? false,
     );
   }
 

@@ -1,5 +1,7 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../services/investigation_service.dart';
 import '../../services/history_service.dart';
 import 'report_screen.dart';
@@ -16,17 +18,130 @@ class HomeScreen extends StatefulWidget {
 class HomeScreenState extends State<HomeScreen> {
   final TextEditingController _controller = TextEditingController();
   final InvestigationService _investigationService = InvestigationService();
+  final ImagePicker _picker = ImagePicker();
+
+  int _selectedInputMode = 0; // 0: Text/Link, 1: Screenshot Scan
+  Uint8List? _selectedImageBytes;
+  String? _selectedImageMime;
+  String? _selectedImageName;
+
   bool _preferOnDevice = true;
   bool _isAnalyzing = false;
   String _analysisStatus = '';
 
   void setInputText(String text) {
     setState(() {
+      _selectedInputMode = 0;
       _controller.text = text;
     });
   }
 
+  Future<void> _pickScreenshot() async {
+    try {
+      final XFile? file = await _picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1600,
+        maxHeight: 1600,
+        imageQuality: 85,
+      );
+      if (file != null) {
+        final bytes = await file.readAsBytes();
+        setState(() {
+          _selectedImageBytes = bytes;
+          _selectedImageMime = file.mimeType ?? 'image/jpeg';
+          _selectedImageName = file.name;
+        });
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to pick screenshot: $e')),
+      );
+    }
+  }
+
+  void _loadDemoScreenshot() {
+    // 1x1 transparent/colored PNG base64 fallback for immediate testing
+    const demoBase64 =
+        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+    setState(() {
+      _selectedImageBytes = base64Decode(demoBase64);
+      _selectedImageMime = 'image/png';
+      _selectedImageName = 'whatsapp_scam_chat.png';
+      _controller.text =
+          'User notes: This WhatsApp message came from an unknown UK number claiming my Aadhaar card is blocked.';
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Loaded sample screenshot scenario for investigation!'),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
   Future<void> _runInvestigation() async {
+    if (_selectedInputMode == 1) {
+      // Screenshot Investigation
+      if (_selectedImageBytes == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Please select or upload a screenshot to investigate.'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        return;
+      }
+
+      setState(() {
+        _isAnalyzing = true;
+        _analysisStatus = '1. Preprocessing image and masking sensitive visual regions...';
+      });
+
+      await Future.delayed(const Duration(milliseconds: 400));
+      if (!mounted) return;
+
+      setState(() {
+        _analysisStatus = _preferOnDevice
+            ? '2. Running On-Device Gemini Nano visual triage...'
+            : '2. Querying Firebase AI Logic Gemini Multimodal...';
+      });
+
+      try {
+        final report = await _investigationService.investigateImage(
+          imageBytes: _selectedImageBytes!,
+          mimeType: _selectedImageMime ?? 'image/jpeg',
+          optionalContext: _controller.text.trim().isEmpty ? null : _controller.text.trim(),
+          forceLocalOnly: _preferOnDevice,
+        );
+
+        await HistoryService.saveReport(report);
+
+        if (!mounted) return;
+        setState(() {
+          _isAnalyzing = false;
+          _analysisStatus = '';
+        });
+
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ReportScreen(report: report),
+          ),
+        );
+      } catch (e) {
+        if (!mounted) return;
+        setState(() {
+          _isAnalyzing = false;
+          _analysisStatus = '';
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Investigation error: $e'), backgroundColor: Colors.redAccent),
+        );
+      }
+      return;
+    }
+
+    // Text Investigation
     final text = _controller.text.trim();
     if (text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -43,7 +158,7 @@ class HomeScreenState extends State<HomeScreen> {
       _analysisStatus = '1. Scrubbing sensitive PII locally on device...';
     });
 
-    await Future.delayed(const Duration(milliseconds: 400));
+    await Future.delayed(const Duration(milliseconds: 300));
     if (!mounted) return;
 
     setState(() {
@@ -52,16 +167,12 @@ class HomeScreenState extends State<HomeScreen> {
           : '2. Querying Firebase AI Logic Cloud Investigator...';
     });
 
-    await Future.delayed(const Duration(milliseconds: 500));
-    if (!mounted) return;
-
     try {
       final report = await _investigationService.investigate(
         text: text,
         forceLocalOnly: _preferOnDevice,
       );
 
-      // Save to local history
       await HistoryService.saveReport(report);
 
       if (!mounted) return;
@@ -83,10 +194,7 @@ class HomeScreenState extends State<HomeScreen> {
         _analysisStatus = '';
       });
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Investigation error: $e'),
-          backgroundColor: Colors.redAccent,
-        ),
+        SnackBar(content: Text('Investigation error: $e'), backgroundColor: Colors.redAccent),
       );
     }
   }
@@ -133,49 +241,112 @@ class HomeScreenState extends State<HomeScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Hero Intro Banner
+            // Mode Selector: Text vs Screenshot
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.all(18),
+              padding: const EdgeInsets.all(4),
               decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: isDark
-                      ? [const Color(0xFF1E293B), const Color(0xFF0F172A)]
-                      : [const Color(0xFFEFF6FF), const Color(0xFFDBEAFE)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(18),
-                border: Border.all(
-                  color: isDark ? Colors.white10 : Colors.blue.withOpacity(0.2),
-                ),
+                color: isDark ? const Color(0xFF1E293B) : const Color(0xFFE2E8F0),
+                borderRadius: BorderRadius.circular(12),
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              child: Row(
                 children: [
-                  Row(
-                    children: [
-                      Icon(Icons.shield_outlined, color: Colors.blue[600], size: 24),
-                      const SizedBox(width: 8),
-                      const Text(
-                        'AI Scam & Fraud Shield',
-                        style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+                  Expanded(
+                    child: InkWell(
+                      onTap: () => setState(() => _selectedInputMode = 0),
+                      borderRadius: BorderRadius.circular(10),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        decoration: BoxDecoration(
+                          color: _selectedInputMode == 0
+                              ? (isDark ? const Color(0xFF334155) : Colors.white)
+                              : Colors.transparent,
+                          borderRadius: BorderRadius.circular(10),
+                          boxShadow: _selectedInputMode == 0
+                              ? [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.08),
+                                    blurRadius: 4,
+                                    offset: const Offset(0, 2),
+                                  )
+                                ]
+                              : null,
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.text_fields_rounded,
+                              size: 18,
+                              color: _selectedInputMode == 0 ? Colors.blueAccent : Colors.grey,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Text / Link Scan',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight:
+                                    _selectedInputMode == 0 ? FontWeight.bold : FontWeight.w500,
+                                color: _selectedInputMode == 0
+                                    ? (isDark ? Colors.white : Colors.black87)
+                                    : Colors.grey,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                    ],
+                    ),
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Analyze suspicious SMS, WhatsApp messages, banking alerts, and links. Detect urgency traps and credential theft with privacy-first Hybrid AI.',
-                    style: TextStyle(
-                      fontSize: 13,
-                      height: 1.4,
-                      color: isDark ? Colors.grey[300] : Colors.grey[700],
+                  Expanded(
+                    child: InkWell(
+                      onTap: () => setState(() => _selectedInputMode = 1),
+                      borderRadius: BorderRadius.circular(10),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        decoration: BoxDecoration(
+                          color: _selectedInputMode == 1
+                              ? (isDark ? const Color(0xFF334155) : Colors.white)
+                              : Colors.transparent,
+                          borderRadius: BorderRadius.circular(10),
+                          boxShadow: _selectedInputMode == 1
+                              ? [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.08),
+                                    blurRadius: 4,
+                                    offset: const Offset(0, 2),
+                                  )
+                                ]
+                              : null,
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.camera_alt_outlined,
+                              size: 18,
+                              color: _selectedInputMode == 1 ? Colors.blueAccent : Colors.grey,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Screenshot Scan',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight:
+                                    _selectedInputMode == 1 ? FontWeight.bold : FontWeight.w500,
+                                color: _selectedInputMode == 1
+                                    ? (isDark ? Colors.white : Colors.black87)
+                                    : Colors.grey,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 16),
 
             // Hybrid Inference Setting Switch
             Container(
@@ -198,7 +369,9 @@ class HomeScreenState extends State<HomeScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          _preferOnDevice ? 'On-Device Shield (Gemini Nano)' : 'Cloud AI (Gemini Flash)',
+                          _preferOnDevice
+                              ? 'On-Device Shield (Gemini Nano)'
+                              : 'Cloud AI (Gemini Flash Multimodal)',
                           style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
                         ),
                         Text(
@@ -223,66 +396,174 @@ class HomeScreenState extends State<HomeScreen> {
             ),
             const SizedBox(height: 20),
 
-            // Text Input Box
-            Text(
-              'Suspicious Content to Investigate',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-                color: isDark ? Colors.white : Colors.black87,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Container(
-              decoration: BoxDecoration(
-                color: isDark ? const Color(0xFF1E293B) : Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: isDark ? Colors.white10 : Colors.black12),
-              ),
-              child: Column(
-                children: [
-                  TextField(
-                    controller: _controller,
-                    maxLines: 5,
-                    decoration: InputDecoration(
-                      hintText:
-                          'Paste an SMS, WhatsApp message, email body, or suspicious URL here...',
-                      hintStyle: TextStyle(
-                        fontSize: 13,
-                        color: isDark ? Colors.grey[500] : Colors.grey[400],
-                      ),
-                      contentPadding: const EdgeInsets.all(16),
-                      border: InputBorder.none,
-                    ),
+            // Mode 1: Screenshot Uploader UI
+            if (_selectedInputMode == 1) ...[
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: _selectedImageBytes != null
+                        ? Colors.blueAccent
+                        : (isDark ? Colors.white10 : Colors.black12),
+                    width: _selectedImageBytes != null ? 1.5 : 1.0,
                   ),
-                  Divider(height: 1, color: isDark ? Colors.white10 : Colors.black12),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        TextButton.icon(
-                          onPressed: () async {
-                            final data = await Clipboard.getData('text/plain');
-                            if (data?.text != null && data!.text!.isNotEmpty) {
-                              setState(() => _controller.text = data.text!);
-                            }
-                          },
-                          icon: const Icon(Icons.paste_rounded, size: 16),
-                          label: const Text('Paste', style: TextStyle(fontSize: 12)),
+                ),
+                child: Column(
+                  children: [
+                    if (_selectedImageBytes != null) ...[
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: Image.memory(
+                          _selectedImageBytes!,
+                          height: 180,
+                          width: double.infinity,
+                          fit: BoxFit.cover,
                         ),
-                        if (_controller.text.isNotEmpty)
-                          TextButton(
-                            onPressed: () => setState(() => _controller.clear()),
-                            child: const Text('Clear', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              _selectedImageName ?? 'screenshot.png',
+                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
-                      ],
-                    ),
-                  ),
-                ],
+                          TextButton.icon(
+                            onPressed: () => setState(() {
+                              _selectedImageBytes = null;
+                              _selectedImageName = null;
+                            }),
+                            icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 16),
+                            label: const Text('Remove',
+                                style: TextStyle(color: Colors.redAccent, fontSize: 12)),
+                          ),
+                        ],
+                      ),
+                    ] else ...[
+                      Icon(Icons.add_photo_alternate_outlined,
+                          size: 48, color: Colors.blueAccent.withOpacity(0.8)),
+                      const SizedBox(height: 12),
+                      const Text(
+                        'Upload a Scam Screenshot',
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        'WhatsApp conversation, SMS thread, bank alert, or fake email',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                            fontSize: 12, color: isDark ? Colors.grey[400] : Colors.grey[600]),
+                      ),
+                      const SizedBox(height: 16),
+                      Wrap(
+                        spacing: 10,
+                        runSpacing: 8,
+                        alignment: WrapAlignment.center,
+                        children: [
+                          FilledButton.icon(
+                            onPressed: _pickScreenshot,
+                            icon: const Icon(Icons.file_upload_outlined, size: 18),
+                            label: const Text('Browse Files'),
+                          ),
+                          OutlinedButton.icon(
+                            onPressed: _loadDemoScreenshot,
+                            icon: const Icon(Icons.science_outlined, size: 18),
+                            label: const Text('Load Demo Screenshot'),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ],
+                ),
               ),
-            ),
-            const SizedBox(height: 16),
+              const SizedBox(height: 14),
+              TextField(
+                controller: _controller,
+                maxLines: 2,
+                decoration: InputDecoration(
+                  hintText: 'Optional notes (e.g. "Received via WhatsApp from +44 number")...',
+                  hintStyle: TextStyle(
+                    fontSize: 12,
+                    color: isDark ? Colors.grey[500] : Colors.grey[400],
+                  ),
+                  filled: true,
+                  fillColor: isDark ? const Color(0xFF1E293B) : Colors.white,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: isDark ? Colors.white10 : Colors.black12),
+                  ),
+                ),
+              ),
+            ] else ...[
+              // Mode 0: Text / Link Input UI
+              Text(
+                'Suspicious Message or Link',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: isDark ? Colors.white : Colors.black87,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Container(
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: isDark ? Colors.white10 : Colors.black12),
+                ),
+                child: Column(
+                  children: [
+                    TextField(
+                      controller: _controller,
+                      maxLines: 5,
+                      decoration: InputDecoration(
+                        hintText:
+                            'Paste an SMS, WhatsApp message, email body, or suspicious URL here...',
+                        hintStyle: TextStyle(
+                          fontSize: 13,
+                          color: isDark ? Colors.grey[500] : Colors.grey[400],
+                        ),
+                        contentPadding: const EdgeInsets.all(16),
+                        border: InputBorder.none,
+                      ),
+                    ),
+                    Divider(height: 1, color: isDark ? Colors.white10 : Colors.black12),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          TextButton.icon(
+                            onPressed: () async {
+                              final data = await Clipboard.getData('text/plain');
+                              if (data?.text != null && data!.text!.isNotEmpty) {
+                                setState(() => _controller.text = data.text!);
+                              }
+                            },
+                            icon: const Icon(Icons.paste_rounded, size: 16),
+                            label: const Text('Paste', style: TextStyle(fontSize: 12)),
+                          ),
+                          if (_controller.text.isNotEmpty)
+                            TextButton(
+                              onPressed: () => setState(() => _controller.clear()),
+                              child: const Text('Clear',
+                                  style: TextStyle(fontSize: 12, color: Colors.grey)),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+
+            const SizedBox(height: 18),
 
             // Investigate Action Button
             SizedBox(
@@ -300,16 +581,19 @@ class HomeScreenState extends State<HomeScreen> {
                         height: 20,
                         child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                       )
-                    : const Icon(Icons.manage_search_rounded, size: 22),
+                    : Icon(_selectedInputMode == 1 ? Icons.document_scanner : Icons.manage_search_rounded,
+                        size: 22),
                 label: Text(
-                  _isAnalyzing ? _analysisStatus : 'Investigate Threat',
+                  _isAnalyzing
+                      ? _analysisStatus
+                      : (_selectedInputMode == 1 ? 'Investigate Screenshot' : 'Investigate Threat'),
                   style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
                 ),
               ),
             ),
             const SizedBox(height: 28),
 
-            // Preset Test Scenarios (Instant Judge Demo)
+            // Quick Test Scenarios
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -381,7 +665,10 @@ class HomeScreenState extends State<HomeScreen> {
       ),
       child: ListTile(
         onTap: () {
-          setState(() => _controller.text = text);
+          setState(() {
+            _selectedInputMode = 0;
+            _controller.text = text;
+          });
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('Loaded scenario: $title'),

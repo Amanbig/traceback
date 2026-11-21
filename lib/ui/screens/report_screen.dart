@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../models/threat_report.dart';
@@ -9,6 +10,96 @@ class ReportScreen extends StatelessWidget {
   final ThreatReport report;
 
   const ReportScreen({super.key, required this.report});
+
+  void _showFlagDetails(BuildContext context, String flag) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        final isDark = Theme.of(ctx).brightness == Brightness.dark;
+        return Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.redAccent.withOpacity(0.12),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(Icons.psychology_outlined, color: Colors.redAccent, size: 24),
+                  ),
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Text(
+                      'Anatomy of this Attack Marker',
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xFF1E293B) : const Color(0xFFFFFBEB),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: Colors.amber.withOpacity(0.3)),
+                ),
+                child: Text(
+                  flag,
+                  style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'The Psychological Trap:',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Scammers exploit cognitive panic and artificial time scarcity to bypass your critical thinking. By threatening imminent loss (account suspension, legal arrest, electricity disconnection), they compel impulsive action before you can verify.',
+                style: TextStyle(
+                  fontSize: 12,
+                  height: 1.4,
+                  color: isDark ? Colors.grey[300] : Colors.grey[700],
+                ),
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'What happens if a victim complies:',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Entering credentials transfers full control of netbanking/UPI sessions or installs SMS-forwarding malware. Once submitted, fund exfiltration takes under 90 seconds.',
+                style: TextStyle(
+                  fontSize: 12,
+                  height: 1.4,
+                  color: isDark ? Colors.grey[300] : Colors.grey[700],
+                ),
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('Got It'),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -66,6 +157,54 @@ ${report.safeNextSteps.map((s) => '• $s').join('\n')}
               ),
             ),
             const SizedBox(height: 24),
+
+            // If Screenshot Scan, Show Image Thumbnail Card
+            if (report.isImageScan && report.imageBase64 != null) ...[
+              Text(
+                'Analyzed Screenshot Evidence',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: isDark ? Colors.white : Colors.black87,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: isDark ? Colors.white10 : Colors.black12),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(10),
+                      child: Image.memory(
+                        base64Decode(report.imageBase64!),
+                        height: 160,
+                        width: double.infinity,
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    const Row(
+                      children: [
+                        Icon(Icons.check_circle_outline, color: Color(0xFF10B981), size: 16),
+                        SizedBox(width: 6),
+                        Text(
+                          'Visual OCR & Layout Inspected with Gemini Vision',
+                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF10B981)),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+            ],
 
             // Investigation Summary
             Text(
@@ -138,44 +277,58 @@ ${report.safeNextSteps.map((s) => '• $s').join('\n')}
               const SizedBox(height: 24),
             ],
 
-            // Critical Red Flags
+            // Critical Red Flags (Interactive Anatomy Taps)
             if (report.redFlags.isNotEmpty) ...[
-              Text(
-                'Identified Red Flags (${report.redFlags.length})',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  color: isDark ? Colors.white : Colors.black87,
-                ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Identified Red Flags (${report.redFlags.length})',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: isDark ? Colors.white : Colors.black87,
+                    ),
+                  ),
+                  const Text(
+                    'Tap to view anatomy',
+                    style: TextStyle(fontSize: 11, color: Colors.blueAccent, fontWeight: FontWeight.w600),
+                  ),
+                ],
               ),
               const SizedBox(height: 10),
               ...report.redFlags.map((flag) {
-                return Container(
-                  margin: const EdgeInsets.only(bottom: 8),
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: isDark ? const Color(0xFF1E293B) : const Color(0xFFFFFBEB),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(
-                      color: isDark ? Colors.white10 : const Color(0xFFFDE68A),
+                return InkWell(
+                  onTap: () => _showFlagDetails(context, flag),
+                  borderRadius: BorderRadius.circular(10),
+                  child: Container(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF1E293B) : const Color(0xFFFFFBEB),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: isDark ? Colors.white10 : const Color(0xFFFDE68A),
+                      ),
                     ),
-                  ),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Icon(Icons.report_problem_rounded, color: Colors.amber, size: 20),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          flag,
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: isDark ? Colors.grey[300] : const Color(0xFF92400E),
-                            height: 1.4,
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Icon(Icons.report_problem_rounded, color: Colors.amber, size: 20),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            flag,
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: isDark ? Colors.grey[300] : const Color(0xFF92400E),
+                              height: 1.4,
+                            ),
                           ),
                         ),
-                      ),
-                    ],
+                        const Icon(Icons.info_outline, size: 16, color: Colors.amber),
+                      ],
+                    ),
                   ),
                 );
               }),
