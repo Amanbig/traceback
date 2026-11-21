@@ -8,6 +8,7 @@ import '../../models/scam_radar_item.dart';
 import '../widgets/auth_dialog.dart';
 import 'investigate_screen.dart';
 import 'url_inspector_screen.dart';
+import 'emergency_toolkit_screen.dart';
 import 'settings_screen.dart';
 import 'report_screen.dart';
 
@@ -312,7 +313,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       width: double.infinity,
                       height: 48,
                       child: ElevatedButton.icon(
-                        onPressed: () => _openInvestigator(mode: 0),
+                        onPressed: () {
+                          if (widget.onNavigateTab != null) {
+                            widget.onNavigateTab!(1);
+                          } else {
+                            _openInvestigator(mode: 0);
+                          }
+                        },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.white,
                           foregroundColor: const Color(0xFF1E3A8A),
@@ -444,7 +451,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     color: Colors.redAccent,
                     isDark: isDark,
                     onTap: () {
-                      widget.onNavigateTab?.call(2); // Switch to Emergency tab
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const EmergencyToolkitScreen()),
+                      );
                     },
                   ),
                 ],
@@ -740,7 +750,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 const SizedBox(height: 6),
                 InkWell(
                   onTap: () {
-                    widget.onNavigateTab?.call(1); // Switch to Radar tab
+                    widget.onNavigateTab?.call(2); // Switch to Radar tab
                   },
                   child: const Text(
                     'View community radar analysis ➔',

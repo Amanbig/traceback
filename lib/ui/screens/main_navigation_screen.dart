@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'dashboard_screen.dart';
 import 'investigate_screen.dart';
 import 'scam_radar_screen.dart';
-import 'emergency_toolkit_screen.dart';
 import 'history_screen.dart';
 
 class MainNavigationScreen extends StatefulWidget {
@@ -30,8 +29,8 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
       DashboardScreen(
         onNavigateTab: (index) => setState(() => _currentIndex = index),
       ),
+      const InvestigateScreen(),
       ScamRadarScreen(onSelectSample: _onSelectSampleFromRadar),
-      const EmergencyToolkitScreen(),
       const HistoryScreen(),
     ];
 
@@ -50,14 +49,14 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
             label: 'Dashboard',
           ),
           NavigationDestination(
+            icon: Icon(Icons.fingerprint_rounded),
+            selectedIcon: Icon(Icons.fingerprint),
+            label: 'Forensics',
+          ),
+          NavigationDestination(
             icon: Icon(Icons.radar_outlined),
             selectedIcon: Icon(Icons.radar),
             label: 'Scam Radar',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.emergency_outlined),
-            selectedIcon: Icon(Icons.emergency),
-            label: 'Emergency',
           ),
           NavigationDestination(
             icon: Icon(Icons.history_outlined),
