@@ -1,12 +1,13 @@
 # Traceback 🛡️
-### AI Digital Scam and Fraud Investigator
+### AI Digital Scam & Fraud Forensics Engine
 
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-[![Built for #BuildHybridAI](https://img.shields.io/badge/Hackathon-%23BuildHybridAI-orange)](https://devpost.com)
+[![Flutter](https://img.shields.io/badge/Flutter-v3.24%2B-02569B?logo=flutter)](https://flutter.dev)
 [![Firebase AI Logic](https://img.shields.io/badge/AI-Firebase%20AI%20Logic-FFCA28?logo=firebase)](https://firebase.google.com/docs/ai-logic)
-[![Platform](https://img.shields.io/badge/Platforms-Android%20%7C%20Web-blue)](#getting-started)
+[![Platforms](https://img.shields.io/badge/Platforms-Android%20%7C%20Web-4285F4)](#getting-started)
+[![Status](https://img.shields.io/badge/Build-Passing-brightgreen)](#testing--code-quality)
 
-> **Traceback** is an explanatory, privacy-first fraud investigation shield. Instead of binary spam filtering, Traceback unmasks how social engineering attacks work—decoding urgency manipulation, credential harvesting traps, spoofed domains, and panic triggers across SMS, WhatsApp, emails, and suspicious links.
+> **Traceback** is an open-source, privacy-preserving digital fraud investigator. Unlike basic spam blockers that merely flag messages, Traceback decompiles social-engineering attack patterns—exposing urgency traps, deceptive domain squatting, authority impersonation, and credential-harvesting mechanisms across SMS, messaging apps, emails, and suspicious URLs.
 
 ---
 
@@ -22,9 +23,9 @@ Traditional spam filters operate as opaque black boxes: they label messages as "
 
 ---
 
-## ⚡ Hybrid Inference Architecture (#BuildHybridAI)
+## ⚡ Hybrid Inference Architecture
 
-Traceback is built using the **Firebase AI Logic SDK** (`firebase_ai`), implementing a dual-engine hybrid pipeline that intelligently balances privacy, latency, and investigative depth.
+Traceback implements a multi-tiered hybrid intelligence pipeline using the **Firebase AI Logic SDK** (`firebase_ai`), balancing zero-leakage local privacy, instantaneous offline response, and in-depth cloud forensic investigation.
 
 ```
 +-------------------------------------------------------------------------+

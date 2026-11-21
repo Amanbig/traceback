@@ -5,14 +5,10 @@ import 'package:uuid/uuid.dart';
 import '../models/threat_report.dart';
 import 'pii_masker.dart';
 import 'local_threat_classifier.dart';
+import 'firebase_service.dart';
 
 class InvestigationService {
   final _uuid = const Uuid();
-  bool _firebaseInitialized = false;
-
-  void markFirebaseInitialized() {
-    _firebaseInitialized = true;
-  }
 
   /// Investigates suspicious message content using Hybrid Inference:
   /// 1. Runs Privacy Shield locally (masks PII).
@@ -61,9 +57,7 @@ class InvestigationService {
     required String maskedText,
     required ThreatReport localBaseline,
   }) async {
-    if (!_firebaseInitialized) {
-      // In development or when Firebase options aren't fully configured yet,
-      // gracefully return high-fidelity on-device evaluation
+    if (!FirebaseService.isInitialized) {
       return localBaseline;
     }
 
