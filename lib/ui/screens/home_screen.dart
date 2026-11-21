@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import '../../services/investigation_service.dart';
 import '../../services/history_service.dart';
 import 'report_screen.dart';
+import 'url_inspector_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   final Function(int)? onNavigateTab;
@@ -728,6 +729,24 @@ class HomeScreenState extends State<HomeScreen> {
               ),
             ),
             const SizedBox(height: 28),
+
+            // URL Inspector Quick Banner
+            OutlinedButton.icon(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const UrlInspectorScreen()),
+                );
+              },
+              style: OutlinedButton.styleFrom(
+                minimumSize: const Size(double.infinity, 48),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              icon: const Icon(Icons.travel_explore_rounded, size: 20, color: Colors.blueAccent),
+              label: const Text('Open URL & Phishing Inspector',
+                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+            ),
+            const SizedBox(height: 24),
 
             // Quick Test Scenarios
             Row(

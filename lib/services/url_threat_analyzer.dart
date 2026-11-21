@@ -1,15 +1,31 @@
 class UrlThreatResult {
   final String url;
+  final String protocol;
+  final String host;
+  final String tld;
+  final String path;
+  final bool isSsl;
   final bool hasSuspiciousDomain;
   final bool isIpAddress;
   final bool hasBrandSquatting;
+  final String? impersonatedBrand;
+  final String? officialAlternativeUrl;
+  final String riskVerdict; // Safe, Suspicious, Critical Phishing
   final List<String> flaggedReasons;
 
   UrlThreatResult({
     required this.url,
+    required this.protocol,
+    required this.host,
+    required this.tld,
+    required this.path,
+    required this.isSsl,
     required this.hasSuspiciousDomain,
     required this.isIpAddress,
     required this.hasBrandSquatting,
+    this.impersonatedBrand,
+    this.officialAlternativeUrl,
+    required this.riskVerdict,
     required this.flaggedReasons,
   });
 
@@ -28,17 +44,28 @@ class UrlThreatAnalyzer {
     '.support', '.vip', '.cfd', '.sbs', '.cc',
   ];
 
-  static final List<String> _targetedBrands = [
-    'paypal', 'apple', 'netflix', 'amazon', 'google', 'chase',
-    'wellsfargo', 'bankofamerica', 'sbi', 'hdfc', 'icici', 'axis',
-    'paytm', 'fedex', 'dhl', 'usps', 'ups', 'microsoft', 'binance',
-    'metamask', 'coinbase',
-  ];
+  static final Map<String, String> _brandOfficialUrls = {
+    'paypal': 'https://www.paypal.com',
+    'apple': 'https://www.apple.com',
+    'netflix': 'https://www.netflix.com',
+    'amazon': 'https://www.amazon.com',
+    'google': 'https://www.google.com',
+    'chase': 'https://www.chase.com',
+    'wellsfargo': 'https://www.wellsfargo.com',
+    'sbi': 'https://onlinesbi.sbi',
+    'hdfc': 'https://www.hdfcbank.com',
+    'icici': 'https://www.icicibank.com',
+    'axis': 'https://www.axisbank.com',
+    'paytm': 'https://paytm.com',
+    'fedex': 'https://www.fedex.com',
+    'dhl': 'https://www.dhl.com',
+    'binance': 'https://www.binance.com',
+  };
 
   static final List<String> _phishingKeywords = [
     'verify', 'verification', 'kyc', 'suspend', 'suspended',
     'blocked', 'restore', 'unblock', 'security-update', 'login-confirm',
-    'claim', 'reward', 'refund', 'refund-portal', 'ebill',
+    'claim', 'reward', 'refund', 'refund-portal', 'ebill', 'challan',
   ];
 
   static List<UrlThreatResult> analyzeAll(String text) {
@@ -55,7 +82,7 @@ class UrlThreatAnalyzer {
 
   static UrlThreatResult analyze(String rawUrl) {
     final reasons = <String>[];
-    String formattedUrl = rawUrl;
+    String formattedUrl = rawUrl.trim();
     if (!formattedUrl.startsWith('http://') && !formattedUrl.startsWith('https://')) {
       formattedUrl = 'https://$formattedUrl';
     }
@@ -64,74 +91,117 @@ class UrlThreatAnalyzer {
     try {
       uri = Uri.parse(formattedUrl);
     } catch (_) {
-      reasons.add('Malformed URL structure');
+      reasons.add('Malformed URL syntax');
       return UrlThreatResult(
         url: rawUrl,
+        protocol: 'unknown',
+        host: 'invalid',
+        tld: 'none',
+        path: '',
+        isSsl: false,
         hasSuspiciousDomain: true,
         isIpAddress: false,
         hasBrandSquatting: false,
+        riskVerdict: 'Critical Phishing',
         flaggedReasons: reasons,
       );
     }
 
+    final protocol = uri.scheme;
     final host = uri.host.toLowerCase();
+    final path = uri.path;
+    final isSsl = protocol == 'https';
+
     bool isIp = false;
     bool hasSuspiciousTld = false;
     bool hasBrandSquatting = false;
+    String detectedTld = '';
+    String? matchedBrand;
+    String? officialUrl;
 
-    // 1. IP address host detection
+    if (!isSsl) {
+      reasons.add('Insecure unencrypted connection (HTTP instead of HTTPS)');
+    }
+
+    // 1. IP address host
     final ipRegex = RegExp(r'^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$');
     if (ipRegex.hasMatch(host)) {
       isIp = true;
-      reasons.add('Direct IP address used instead of legitimate registered domain');
+      reasons.add('Direct numeric IP address ($host) bypasses legitimate domain reputation checks');
     }
 
     // 2. Punycode check
     if (host.startsWith('xn--') || host.contains('.xn--')) {
-      reasons.add('Punycode / Homograph domain detected (possible spoofed characters)');
+      reasons.add('Punycode / Homograph domain detected (uses lookalike foreign characters to spoof trusted domains)');
     }
 
     // 3. Suspicious TLD check
     for (final tld in _suspiciousTlds) {
       if (host.endsWith(tld)) {
         hasSuspiciousTld = true;
-        reasons.add('High-risk top-level domain ($tld) commonly associated with disposable phishing campaigns');
+        detectedTld = tld;
+        reasons.add('Disposable high-risk top-level domain ($tld) frequently purchased anonymously for fraud campaigns');
         break;
       }
     }
 
-    // 4. Brand squatting / typosquatting check
-    for (final brand in _targetedBrands) {
+    // 4. Brand squatting & typosquatting check
+    for (final entry in _brandOfficialUrls.entries) {
+      final brand = entry.key;
       if (host.contains(brand)) {
-        // Check if the domain is legitimately that brand
-        final isOfficial = host == '$brand.com' ||
+        final isLegit = host == '$brand.com' ||
             host == 'www.$brand.com' ||
             host == '$brand.in' ||
             host == 'www.$brand.in' ||
             host == '$brand.co.in' ||
-            host == 'www.$brand.co.in';
+            host == 'www.$brand.co.in' ||
+            host == 'onlinesbi.sbi';
 
-        if (!isOfficial) {
+        if (!isLegit) {
           hasBrandSquatting = true;
-          reasons.add('Domain impersonates trusted service "$brand" ($host)');
+          matchedBrand = brand.toUpperCase();
+          officialUrl = entry.value;
+          reasons.add('Brand Impersonation: Domain unauthorizedly contains "$brand" inside deceptive host "$host"');
         }
       }
     }
 
-    // 5. Sensitive action keywords in path or query
+    // 5. Phishing keywords in path or query
     final pathAndQuery = (uri.path + uri.query).toLowerCase();
     for (final keyword in _phishingKeywords) {
       if (pathAndQuery.contains(keyword)) {
-        reasons.add('URL path invokes sensitive credential action ("$keyword")');
+        reasons.add('Suspicious URL action: Solicits sensitive user action ("$keyword")');
         break;
       }
     }
 
+    // 6. APK download check
+    if (path.endsWith('.apk')) {
+      reasons.add('Direct Android Package (.apk) installer link — high probability SMS-stealing malware');
+    }
+
+    String verdict;
+    if (isIp || hasBrandSquatting || path.endsWith('.apk') || reasons.length >= 3) {
+      verdict = 'Critical Phishing Link';
+    } else if (hasSuspiciousTld || reasons.isNotEmpty) {
+      verdict = 'Suspicious Domain';
+    } else {
+      verdict = 'Legitimate / Standard URL';
+    }
+
     return UrlThreatResult(
       url: rawUrl,
+      protocol: protocol,
+      host: host,
+      tld: detectedTld.isNotEmpty ? detectedTld : (host.contains('.') ? '.${host.split('.').last}' : ''),
+      path: path.isNotEmpty ? path : '/',
+      isSsl: isSsl,
       hasSuspiciousDomain: hasSuspiciousTld,
       isIpAddress: isIp,
       hasBrandSquatting: hasBrandSquatting,
+      impersonatedBrand: matchedBrand,
+      officialAlternativeUrl: officialUrl,
+      riskVerdict: verdict,
       flaggedReasons: reasons,
     );
   }
