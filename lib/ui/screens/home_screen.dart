@@ -83,6 +83,30 @@ class HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  Future<void> _captureWithCamera() async {
+    try {
+      final XFile? file = await _picker.pickImage(
+        source: ImageSource.camera,
+        maxWidth: 1600,
+        maxHeight: 1600,
+        imageQuality: 85,
+      );
+      if (file != null) {
+        final bytes = await file.readAsBytes();
+        setState(() {
+          _selectedImageBytes = bytes;
+          _selectedImageMime = file.mimeType ?? 'image/jpeg';
+          _selectedImageName = file.name.isNotEmpty ? file.name : 'camera_capture.jpg';
+        });
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Camera capture failed: $e')),
+      );
+    }
+  }
+
   void _loadDemoScreenshot() {
     const demoBase64 =
         'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
@@ -642,19 +666,24 @@ class HomeScreenState extends State<HomeScreen> {
                       ),
                       const SizedBox(height: 16),
                       Wrap(
-                        spacing: 10,
+                        spacing: 8,
                         runSpacing: 8,
                         alignment: WrapAlignment.center,
                         children: [
                           FilledButton.icon(
                             onPressed: _pickScreenshot,
-                            icon: const Icon(Icons.file_upload_outlined, size: 18),
-                            label: const Text('Browse Files'),
+                            icon: const Icon(Icons.photo_library_outlined, size: 16),
+                            label: const Text('Gallery', style: TextStyle(fontSize: 12)),
+                          ),
+                          FilledButton.tonalIcon(
+                            onPressed: _captureWithCamera,
+                            icon: const Icon(Icons.camera_alt_outlined, size: 16),
+                            label: const Text('Camera', style: TextStyle(fontSize: 12)),
                           ),
                           OutlinedButton.icon(
                             onPressed: _loadDemoScreenshot,
-                            icon: const Icon(Icons.science_outlined, size: 18),
-                            label: const Text('Load Demo Screenshot'),
+                            icon: const Icon(Icons.science_outlined, size: 16),
+                            label: const Text('Demo Sample', style: TextStyle(fontSize: 12)),
                           ),
                         ],
                       ),
