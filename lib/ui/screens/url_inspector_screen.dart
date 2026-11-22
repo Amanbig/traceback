@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../services/url_threat_analyzer.dart';
+import '../theme/app_theme.dart';
+import '../widgets/common.dart';
 
 class UrlInspectorScreen extends StatefulWidget {
   final String? initialUrl;
@@ -13,6 +15,8 @@ class UrlInspectorScreen extends StatefulWidget {
 
 class _UrlInspectorScreenState extends State<UrlInspectorScreen> {
   final TextEditingController _urlController = TextEditingController();
+  final ScrollController _scroll = ScrollController();
+  final GlobalKey _resultKey = GlobalKey();
   UrlThreatResult? _result;
 
   @override
@@ -26,347 +30,253 @@ class _UrlInspectorScreenState extends State<UrlInspectorScreen> {
 
   void _analyzeUrl(String url) {
     if (url.trim().isEmpty) return;
-    setState(() {
-      _result = UrlThreatAnalyzer.analyze(url);
+    FocusScope.of(context).unfocus();
+    setState(() => _result = UrlThreatAnalyzer.analyze(url.trim()));
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final ctx = _resultKey.currentContext;
+      if (ctx != null) {
+        Scrollable.ensureVisible(ctx,
+            duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
+      }
     });
   }
 
   @override
   void dispose() {
     _urlController.dispose();
+    _scroll.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
     return Scaffold(
-      appBar: AppBar(
-        title: const Row(
-          children: [
-            Icon(Icons.link_rounded, color: Colors.blueAccent),
-            SizedBox(width: 10),
-            Text('URL & Phishing Inspector', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-          ],
-        ),
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Header Description
-            Text(
-              'Inspect suspicious links and QR destinations for typosquatting, deceptive subdomains, disposable TLDs, and malware downloads.',
-              style: TextStyle(fontSize: 13, color: isDark ? Colors.grey[300] : Colors.grey[700], height: 1.4),
-            ),
-            const SizedBox(height: 16),
-
-            // Input Container
-            Container(
-              decoration: BoxDecoration(
-                color: isDark ? const Color(0xFF1E293B) : Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: isDark ? Colors.white10 : Colors.black12),
-              ),
-              child: Column(
-                children: [
-                  TextField(
-                    controller: _urlController,
-                    decoration: InputDecoration(
-                      hintText: 'Enter or paste link (e.g. sbi-kyc-update.live)...',
-                      hintStyle: TextStyle(fontSize: 13, color: isDark ? Colors.grey[500] : Colors.grey[400]),
-                      contentPadding: const EdgeInsets.all(16),
-                      border: InputBorder.none,
-                      prefixIcon: const Icon(Icons.search, size: 20),
-                    ),
-                  ),
-                  Divider(height: 1, color: isDark ? Colors.white10 : Colors.black12),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        TextButton.icon(
-                          onPressed: () async {
-                            final data = await Clipboard.getData('text/plain');
-                            if (data?.text != null && data!.text!.isNotEmpty) {
-                              setState(() => _urlController.text = data.text!);
-                              _analyzeUrl(data.text!);
-                            }
-                          },
-                          icon: const Icon(Icons.paste_rounded, size: 16),
-                          label: const Text('Paste Link', style: TextStyle(fontSize: 12)),
-                        ),
-                        FilledButton.icon(
-                          onPressed: () => _analyzeUrl(_urlController.text),
-                          icon: const Icon(Icons.travel_explore_rounded, size: 16),
-                          label: const Text('Analyze', style: TextStyle(fontSize: 12)),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 20),
-
-            // Analysis Result Card
-            if (_result != null) ...[
-              _buildResultCard(context, _result!, isDark),
-              const SizedBox(height: 24),
-            ],
-
-            // Preset Test Links
-            const Text(
-              'Preset Phishing Link Scenarios',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-            ),
-            const SizedBox(height: 10),
-            _buildSampleLinkTile(
-              title: 'Bank KYC Subdomain Impersonation',
-              url: 'http://sbi-kyc-update.live/portal',
-              desc: 'Insecure HTTP • Spoofed Brand • Disposable .live TLD',
-              color: Colors.redAccent,
-            ),
-            _buildSampleLinkTile(
-              title: 'PayPal Typosquatting Attack',
-              url: 'http://paypa1-security.top/verify-login',
-              desc: 'Substituted numeral "1" for letter "l" • Credential Action',
-              color: Colors.orangeAccent,
-            ),
-            _buildSampleLinkTile(
-              title: 'Direct IP Host & Malware APK',
-              url: 'http://185.220.101.5/challan.apk',
-              desc: 'Direct IP Host • SMS-Stealing Android APK Installer',
-              color: Colors.purpleAccent,
-            ),
-            _buildSampleLinkTile(
-              title: 'Legitimate Official Domain (Control)',
-              url: 'https://www.apple.com',
-              desc: 'Encrypted HTTPS • Registered Corporate Domain',
-              color: Colors.green,
-            ),
-            const SizedBox(height: 32),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildResultCard(BuildContext context, UrlThreatResult res, bool isDark) {
-    Color verdictColor = Colors.green;
-    IconData verdictIcon = Icons.verified_user_rounded;
-
-    if (res.riskVerdict == 'Critical Phishing Link') {
-      verdictColor = Colors.redAccent;
-      verdictIcon = Icons.dangerous_rounded;
-    } else if (res.riskVerdict == 'Suspicious Domain') {
-      verdictColor = Colors.orangeAccent;
-      verdictIcon = Icons.warning_amber_rounded;
-    }
-
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1E293B) : Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: verdictColor.withOpacity(0.4), width: 1.5),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      appBar: AppBar(title: const Text('Link checker')),
+      body: ListView(
+        controller: _scroll,
+        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+        padding: const EdgeInsets.fromLTRB(AppSpacing.screenH, 4, AppSpacing.screenH, 32),
         children: [
-          Row(
-            children: [
-              Icon(verdictIcon, color: verdictColor, size: 28),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      res.riskVerdict.toUpperCase(),
-                      style: TextStyle(
-                        fontWeight: FontWeight.w900,
-                        fontSize: 15,
-                        color: verdictColor,
-                        letterSpacing: 0.8,
-                      ),
-                    ),
-                    Text(
-                      res.url,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(fontSize: 12, color: isDark ? Colors.grey[400] : Colors.grey[600]),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+          Text(
+            'Paste a link to check for fake bank sites, look-alike domains and malware downloads. Nothing is opened.',
+            style: TextStyle(fontSize: 14, height: 1.4, color: context.mutedText),
           ),
-          const SizedBox(height: 16),
-
-          // Visual Domain Anatomy Breakdown
-          const Text(
-            'URL Lexical Anatomy:',
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
-          ),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              _buildAnatomyPill(
-                'Protocol: ${res.protocol}://',
-                res.isSsl ? Colors.green : Colors.redAccent,
-              ),
-              _buildAnatomyPill(
-                'Host: ${res.host}',
-                res.hasBrandSquatting || res.isIpAddress ? Colors.redAccent : Colors.blueAccent,
-              ),
-              if (res.tld.isNotEmpty)
-                _buildAnatomyPill(
-                  'TLD: ${res.tld}',
-                  res.hasSuspiciousDomain ? Colors.orangeAccent : Colors.grey,
-                ),
-              if (res.path.length > 1)
-                _buildAnatomyPill(
-                  'Path: ${res.path}',
-                  res.path.endsWith('.apk') ? Colors.redAccent : Colors.teal,
-                ),
-            ],
-          ),
-          const SizedBox(height: 16),
-
-          // Flagged Security Findings
-          if (res.flaggedReasons.isNotEmpty) ...[
-            const Text(
-              'Security Red Flags:',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
-            ),
-            const SizedBox(height: 6),
-            ...res.flaggedReasons.map((r) => Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 3),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Icon(Icons.arrow_right, color: Colors.redAccent, size: 18),
-                      Expanded(
-                        child: Text(
-                          r,
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: isDark ? Colors.grey[300] : Colors.grey[800],
-                            height: 1.3,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                )),
-            const SizedBox(height: 16),
-          ],
-
-          // Legitimate Official Alternative
-          if (res.officialAlternativeUrl != null) ...[
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: const Color(0xFF10B981).withOpacity(0.1),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: const Color(0xFF10B981).withOpacity(0.3)),
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.verified_rounded, color: Color(0xFF10B981), size: 20),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Verified Official Alternative for ${res.impersonatedBrand ?? "Brand"}',
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
-                        ),
-                        Text(
-                          res.officialAlternativeUrl!,
-                          style: const TextStyle(
-                              fontSize: 12, color: Color(0xFF10B981), fontWeight: FontWeight.w600),
-                        ),
-                      ],
-                    ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.copy, size: 16),
-                    onPressed: () {
-                      Clipboard.setData(ClipboardData(text: res.officialAlternativeUrl!));
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Copied verified official URL to clipboard')),
-                      );
-                    },
-                  ),
-                ],
+          const SizedBox(height: AppSpacing.lg),
+          TextField(
+            controller: _urlController,
+            keyboardType: TextInputType.url,
+            textInputAction: TextInputAction.go,
+            autocorrect: false,
+            onSubmitted: _analyzeUrl,
+            onChanged: (_) => setState(() {}),
+            decoration: InputDecoration(
+              hintText: 'e.g. sbi-kyc-update.live',
+              prefixIcon: const Icon(Icons.link_rounded),
+              suffixIcon: IconButton(
+                icon: const Icon(Icons.content_paste_rounded),
+                tooltip: 'Paste',
+                onPressed: () async {
+                  final data = await Clipboard.getData('text/plain');
+                  final text = data?.text?.trim();
+                  if (text != null && text.isNotEmpty) {
+                    setState(() => _urlController.text = text);
+                    _analyzeUrl(text);
+                  }
+                },
               ),
             ),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: _urlController.text.trim().isEmpty
+                  ? null
+                  : () => _analyzeUrl(_urlController.text),
+              icon: const Icon(Icons.travel_explore_rounded),
+              label: const Text('Check link'),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.xl),
+          if (_result != null) ...[
+            KeyedSubtree(key: _resultKey, child: _buildResult(_result!)),
+            const SizedBox(height: AppSpacing.xl),
           ],
+          const SectionHeader('Try an example'),
+          _sample(
+            title: 'Fake bank KYC page',
+            url: 'http://sbi-kyc-update.live/portal',
+            desc: 'Not secure, imitates a bank, cheap .live domain',
+            color: AppColors.danger,
+          ),
+          _sample(
+            title: 'Look-alike PayPal login',
+            url: 'http://paypa1-security.top/verify-login',
+            desc: 'Number "1" used in place of letter "l"',
+            color: const Color(0xFFF97316),
+          ),
+          _sample(
+            title: 'Malware app download',
+            url: 'http://185.220.101.5/challan.apk',
+            desc: 'Raw IP address and an APK that can steal SMS',
+            color: const Color(0xFFC084FC),
+          ),
+          _sample(
+            title: 'Genuine site (for comparison)',
+            url: 'https://www.apple.com',
+            desc: 'Secure connection, well-known domain',
+            color: AppColors.safe,
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildAnatomyPill(String label, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: color.withOpacity(0.3)),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: color),
-      ),
+  Widget _buildResult(UrlThreatResult res) {
+    final Color color;
+    final IconData icon;
+    final String title;
+    final String subtitle;
+    if (res.riskVerdict.startsWith('Critical')) {
+      color = AppColors.danger;
+      icon = Icons.gpp_bad_rounded;
+      title = 'Dangerous link';
+      subtitle = 'Do not open it or enter any details.';
+    } else if (res.riskVerdict.startsWith('Suspicious')) {
+      color = AppColors.warn;
+      icon = Icons.gpp_maybe_rounded;
+      title = 'Suspicious link';
+      subtitle = 'Be careful. Verify the sender before you tap.';
+    } else {
+      color = AppColors.safe;
+      icon = Icons.verified_user_rounded;
+      title = 'No problems found';
+      subtitle = 'This still does not guarantee a link is safe.';
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        VerdictBanner(color: color, icon: icon, title: title, subtitle: subtitle),
+        const SizedBox(height: AppSpacing.md),
+        AppCard(
+          child: Column(
+            children: [
+              DetailRow('Address', res.url),
+              DetailRow('Connection', res.isSsl ? 'Secure (HTTPS)' : 'Not secure (HTTP)',
+                  valueColor: res.isSsl ? AppColors.safe : AppColors.danger),
+              DetailRow('Website', res.host,
+                  valueColor:
+                      res.hasBrandSquatting || res.isIpAddress ? AppColors.danger : null),
+              if (res.tld.isNotEmpty)
+                DetailRow('Ending', res.tld,
+                    valueColor: res.hasSuspiciousDomain ? AppColors.warn : null),
+              if (res.path.length > 1)
+                DetailRow('Page', res.path,
+                    valueColor: res.path.endsWith('.apk') ? AppColors.danger : null),
+            ],
+          ),
+        ),
+        if (res.flaggedReasons.isNotEmpty) ...[
+          const SizedBox(height: AppSpacing.xl),
+          const SectionHeader('Why it was flagged'),
+          for (final r in res.flaggedReasons)
+            Padding(
+              padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+              child: AppCard(
+                padding: const EdgeInsets.all(14),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(Icons.report_problem_rounded, color: AppColors.warn, size: 20),
+                    const SizedBox(width: 12),
+                    Expanded(child: Text(r, style: const TextStyle(fontSize: 14.5, height: 1.4))),
+                  ],
+                ),
+              ),
+            ),
+        ],
+        if (res.officialAlternativeUrl != null) ...[
+          const SizedBox(height: AppSpacing.md),
+          AppCard(
+            borderColor: AppColors.safe.withOpacity(0.45),
+            color: AppColors.safe.withOpacity(0.08),
+            child: Row(
+              children: [
+                const Icon(Icons.verified_rounded, color: AppColors.safe),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Real ${res.impersonatedBrand ?? 'site'} address',
+                          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+                      const SizedBox(height: 2),
+                      Text(res.officialAlternativeUrl!,
+                          style: const TextStyle(
+                              fontSize: 14,
+                              color: AppColors.safe,
+                              fontWeight: FontWeight.w600)),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.copy_rounded, size: 20),
+                  tooltip: 'Copy address',
+                  onPressed: () {
+                    Clipboard.setData(ClipboardData(text: res.officialAlternativeUrl!));
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Official address copied')),
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
+        ],
+      ],
     );
   }
 
-  Widget _buildSampleLinkTile({
+  Widget _sample({
     required String title,
     required String url,
     required String desc,
     required Color color,
   }) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return Card(
-      elevation: 0,
-      margin: const EdgeInsets.only(bottom: 10),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: isDark ? Colors.white10 : Colors.black12),
-      ),
-      child: ListTile(
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+      child: AppCard(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         onTap: () {
           setState(() => _urlController.text = url);
           _analyzeUrl(url);
         },
-        leading: Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: color.withOpacity(0.12),
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Icon(Icons.link, color: color, size: 20),
+        child: Row(
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(Icons.link_rounded, color: color, size: 20),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
+                  const SizedBox(height: 2),
+                  Text(desc, style: TextStyle(fontSize: 13, color: context.mutedText)),
+                ],
+              ),
+            ),
+            Icon(Icons.chevron_right_rounded, color: context.mutedText),
+          ],
         ),
-        title: Text(
-          title,
-          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
-        ),
-        subtitle: Text(
-          desc,
-          style: TextStyle(fontSize: 11, color: isDark ? Colors.grey[400] : Colors.grey[600]),
-        ),
-        trailing: const Icon(Icons.arrow_forward_ios, size: 12),
       ),
     );
   }

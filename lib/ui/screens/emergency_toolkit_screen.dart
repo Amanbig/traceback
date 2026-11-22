@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../models/emergency_contact.dart';
+import '../theme/app_theme.dart';
+import '../widgets/common.dart';
 
 class EmergencyToolkitScreen extends StatefulWidget {
   const EmergencyToolkitScreen({super.key});
@@ -12,94 +15,121 @@ class EmergencyToolkitScreen extends StatefulWidget {
 class _EmergencyToolkitScreenState extends State<EmergencyToolkitScreen> {
   String _searchQuery = '';
 
-  void _showDisputeLetterGenerator(BuildContext context) {
-    final bankController = TextEditingController(text: 'State Bank of India');
-    final accountController = TextEditingController(text: 'XXXX-XXXX-8910');
-    final amountController = TextEditingController(text: '45,000');
-    final txIdController = TextEditingController(text: 'UPI/20261121/9821038192');
-    final dateController = TextEditingController(text: '21-Nov-2026');
+  void _toast(String message) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  Future<void> _copy(String text, String what) async {
+    await Clipboard.setData(ClipboardData(text: text));
+    if (mounted) _toast('$what copied');
+  }
+
+  Future<void> _call(String number) async {
+    final digits = number.replaceAll(RegExp(r'[^0-9+]'), '');
+    final ok = digits.isNotEmpty &&
+        await launchUrl(Uri(scheme: 'tel', path: digits)).catchError((_) => false);
+    if (!ok) {
+      // No dialer available (e.g. web or a tablet). Fall back to copying.
+      await _copy(number, 'Number');
+    }
+  }
+
+  Future<void> _openSite(String url) async {
+    final ok = await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication)
+        .catchError((_) => false);
+    if (!ok && mounted) _toast('Could not open $url');
+  }
+
+  bool _isDialable(String s) => RegExp(r'^[0-9][0-9\-\s]{2,}$').hasMatch(s);
+
+  void _showDisputeLetterGenerator() {
+    final bank = TextEditingController();
+    final account = TextEditingController();
+    final amount = TextEditingController();
+    final txId = TextEditingController();
+    final date = TextEditingController();
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
+      showDragHandle: true,
       builder: (ctx) => Padding(
-        padding: EdgeInsets.fromLTRB(20, 20, 20, MediaQuery.of(ctx).viewInsets.bottom + 20),
+        padding: EdgeInsets.fromLTRB(20, 0, 20, MediaQuery.of(ctx).viewInsets.bottom + 20),
         child: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.blueAccent.withOpacity(0.12),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: const Icon(Icons.description_outlined, color: Colors.blueAccent, size: 24),
-                  ),
-                  const SizedBox(width: 12),
-                  const Expanded(
-                    child: Text(
-                      'Official Bank Dispute Letter Generator',
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                    ),
-                  ),
-                ],
+              const Text('Bank dispute letter',
+                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 20)),
+              const SizedBox(height: 4),
+              Text(
+                'Fill in what you know. We write a formal complaint you can paste into an email to your bank.',
+                style: TextStyle(fontSize: 14, height: 1.4, color: context.mutedText),
               ),
-              const SizedBox(height: 14),
+              const SizedBox(height: 16),
               TextField(
-                controller: bankController,
-                decoration: const InputDecoration(labelText: 'Bank Name'),
+                controller: bank,
+                textCapitalization: TextCapitalization.words,
+                decoration: const InputDecoration(
+                    labelText: 'Bank name', hintText: 'e.g. State Bank of India'),
               ),
+              const SizedBox(height: 12),
               TextField(
-                controller: accountController,
-                decoration: const InputDecoration(labelText: 'Account / Card Number'),
+                controller: account,
+                decoration: const InputDecoration(
+                    labelText: 'Account or card number', hintText: 'Last 4 digits are enough'),
               ),
+              const SizedBox(height: 12),
               Row(
                 children: [
                   Expanded(
                     child: TextField(
-                      controller: amountController,
-                      decoration: const InputDecoration(labelText: 'Disputed Amount (INR)'),
+                      controller: amount,
+                      keyboardType: TextInputType.number,
+                      decoration:
+                          const InputDecoration(labelText: 'Amount (INR)', hintText: '45,000'),
                     ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: TextField(
-                      controller: dateController,
-                      decoration: const InputDecoration(labelText: 'Transaction Date'),
+                      controller: date,
+                      decoration: const InputDecoration(
+                          labelText: 'Date', hintText: 'DD-MMM-YYYY'),
                     ),
                   ),
                 ],
               ),
+              const SizedBox(height: 12),
               TextField(
-                controller: txIdController,
-                decoration: const InputDecoration(labelText: 'Transaction UTR / Reference ID'),
+                controller: txId,
+                decoration: const InputDecoration(
+                    labelText: 'UTR or reference ID', hintText: 'From the debit SMS'),
               ),
               const SizedBox(height: 20),
               SizedBox(
                 width: double.infinity,
                 child: FilledButton.icon(
                   onPressed: () {
+                    String v(TextEditingController c, String fallback) =>
+                        c.text.trim().isEmpty ? fallback : c.text.trim();
                     final letter = '''
 To,
 The Branch Manager & Cyber Fraud Cell,
-${bankController.text}
+${v(bank, '[Bank name]')}
 
 Subject: Urgent Notification & Chargeback Request for Unauthorized Fraudulent Transaction
 
 Dear Sir/Madam,
 
 I am writing to formally report an unauthorized fraudulent transaction executed on my account:
-• Account / Card Number: ${accountController.text}
-• Disputed Amount: INR ${amountController.text}
-• Transaction Date: ${dateController.text}
-• Transaction Reference / UTR: ${txIdController.text}
+• Account / Card Number: ${v(account, '[Account number]')}
+• Disputed Amount: INR ${v(amount, '[Amount]')}
+• Transaction Date: ${v(date, '[Date]')}
+• Transaction Reference / UTR: ${v(txId, '[Reference ID]')}
 
 This transaction was executed without my informed consent as a consequence of a deceptive digital phishing/social engineering scam. In accordance with RBI Circular DBR.No.Leg.BC.78/09.07.005/2017-18 ("Customer Protection – Limiting Liability of Customers in Unauthorized Electronic Banking Transactions"), I have reported this incident within the stipulated zero-liability window.
 
@@ -116,15 +146,10 @@ Sincerely,
 ''';
                     Clipboard.setData(ClipboardData(text: letter));
                     Navigator.pop(ctx);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Dispute complaint letter copied to clipboard! Ready to email your bank.'),
-                        behavior: SnackBarBehavior.floating,
-                      ),
-                    );
+                    _toast('Letter copied. Paste it into an email to your bank.');
                   },
                   icon: const Icon(Icons.copy_rounded, size: 18),
-                  label: const Text('Generate & Copy Dispute Letter'),
+                  label: const Text('Copy letter'),
                 ),
               ),
             ],
@@ -134,209 +159,235 @@ Sincerely,
     );
   }
 
+  Widget _buildHelplineHero() {
+    const red = AppColors.danger;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(24),
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [red.withOpacity(0.28), context.surfaceColor],
+        ),
+        border: Border.all(color: red.withOpacity(0.45)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.timer_outlined, color: red, size: 20),
+              SizedBox(width: 8),
+              Text('Lost money in the last 2 hours?',
+                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15, color: red)),
+            ],
+          ),
+          const SizedBox(height: 10),
+          const Text('Call 1930 now',
+              style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800, height: 1.1)),
+          const SizedBox(height: 8),
+          Text(
+            'Reporting quickly can freeze the money before scammers withdraw it.',
+            style: TextStyle(fontSize: 14.5, height: 1.4, color: context.mutedText),
+          ),
+          const SizedBox(height: 18),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: () => _call('1930'),
+              style: FilledButton.styleFrom(
+                backgroundColor: red,
+                foregroundColor: Colors.white,
+                minimumSize: const Size(64, 56),
+              ),
+              icon: const Icon(Icons.call_rounded),
+              label: const Text('Call 1930'),
+            ),
+          ),
+          const SizedBox(height: 10),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: () => _openSite('https://cybercrime.gov.in'),
+              icon: const Icon(Icons.open_in_new_rounded, size: 18),
+              label: const Text('Report online at cybercrime.gov.in'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildChecklist() {
+    const steps = [
+      'Call 1930 and note the complaint number.',
+      'Call your bank and ask them to block the card, UPI or net banking.',
+      'Do not send any more money, even to "recover" the loss.',
+      'Keep screenshots, messages and transaction IDs as evidence.',
+    ];
+    return AppCard(
+      child: Column(
+        children: [
+          for (var i = 0; i < steps.length; i++)
+            Padding(
+              padding: EdgeInsets.only(top: i == 0 ? 0 : 12),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 24,
+                    height: 24,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: AppColors.brand.withOpacity(0.18),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Text('${i + 1}',
+                        style: const TextStyle(
+                            fontSize: 12, fontWeight: FontWeight.w800, color: AppColors.brand)),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(steps[i], style: const TextStyle(fontSize: 14.5, height: 1.4)),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildContactCard(EmergencyContact item) {
+    final dialable = _isDialable(item.primaryContact);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.md),
+      child: AppCard(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(item.entityName,
+                      style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15.5)),
+                ),
+                const SizedBox(width: 8),
+                StatusPill(label: item.category, color: AppColors.brand),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                const Icon(Icons.phone_in_talk_outlined, size: 18, color: AppColors.safe),
+                const SizedBox(width: 8),
+                Flexible(
+                  child: Text(item.primaryContact,
+                      style: const TextStyle(
+                          fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.safe)),
+                ),
+                if (item.alternativeContact != null) ...[
+                  const SizedBox(width: 8),
+                  Text('or ${item.alternativeContact}',
+                      style: TextStyle(fontSize: 13.5, color: context.mutedText)),
+                ],
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(item.advice,
+                style: TextStyle(fontSize: 13.5, height: 1.4, color: context.mutedText)),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                if (dialable)
+                  FilledButton.tonalIcon(
+                    onPressed: () => _call(item.primaryContact),
+                    icon: const Icon(Icons.call_rounded, size: 18),
+                    label: const Text('Call'),
+                    style: FilledButton.styleFrom(minimumSize: const Size(96, 44)),
+                  ),
+                OutlinedButton.icon(
+                  onPressed: () => _copy(item.primaryContact, 'Number'),
+                  icon: const Icon(Icons.copy_rounded, size: 16),
+                  label: const Text('Copy'),
+                  style: OutlinedButton.styleFrom(minimumSize: const Size(96, 44)),
+                ),
+                if (item.website != null)
+                  OutlinedButton.icon(
+                    onPressed: () => _openSite(item.website!),
+                    icon: const Icon(Icons.open_in_new_rounded, size: 16),
+                    label: const Text('Website'),
+                    style: OutlinedButton.styleFrom(minimumSize: const Size(96, 44)),
+                  ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
+    final q = _searchQuery.toLowerCase().trim();
     final filtered = EmergencyContact.verifiedDirectory.where((c) {
-      final q = _searchQuery.toLowerCase();
       return c.entityName.toLowerCase().contains(q) ||
           c.category.toLowerCase().contains(q) ||
           c.primaryContact.toLowerCase().contains(q);
     }).toList();
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Row(
-          children: [
-            Icon(Icons.emergency_outlined, color: Colors.redAccent),
-            SizedBox(width: 10),
-            Text('Victim Emergency Toolkit', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-          ],
-        ),
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Golden Hour Emergency Card
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(18),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFFDC2626), Color(0xFF991B1B)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(16),
+      appBar: AppBar(title: const Text('Emergency help')),
+      body: ListView(
+        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+        padding: const EdgeInsets.fromLTRB(AppSpacing.screenH, 4, AppSpacing.screenH, 32),
+        children: [
+          _buildHelplineHero(),
+          const SizedBox(height: AppSpacing.xl),
+          const SectionHeader('What to do right now'),
+          _buildChecklist(),
+          const SizedBox(height: AppSpacing.md),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: _showDisputeLetterGenerator,
+              icon: const Icon(Icons.description_outlined, size: 18),
+              label: const Text('Write a bank dispute letter'),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.xl),
+          const SectionHeader('Verified contacts'),
+          Padding(
+            padding: const EdgeInsets.only(bottom: AppSpacing.md),
+            child: Text(
+              'Only use these numbers. Never call a number sent by SMS or found on an unofficial site.',
+              style: TextStyle(fontSize: 13.5, height: 1.4, color: context.mutedText),
+            ),
+          ),
+          TextField(
+            onChanged: (val) => setState(() => _searchQuery = val),
+            decoration: const InputDecoration(
+              hintText: 'Search bank, helpline or portal',
+              prefixIcon: Icon(Icons.search_rounded),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          if (filtered.isEmpty)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 24),
+              child: EmptyState(
+                icon: Icons.search_off_rounded,
+                title: 'No contacts found',
+                message: 'Try the name of your bank, or search "helpline".',
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Row(
-                    children: [
-                      Icon(Icons.timer_outlined, color: Colors.white, size: 22),
-                      SizedBox(width: 8),
-                      Text(
-                        'Golden Hour Cyber Response',
-                        style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 16),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'If you lost money within the last 2 hours, reporting immediately to 1930 freezes money before scammers can cash out at ATMs or crypto exchanges.',
-                    style: TextStyle(color: Colors.white, fontSize: 12, height: 1.4),
-                  ),
-                  const SizedBox(height: 14),
-                  Row(
-                    children: [
-                      FilledButton.icon(
-                        onPressed: () {
-                          Clipboard.setData(const ClipboardData(text: '1930'));
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Helpline 1930 copied!')),
-                          );
-                        },
-                        style: FilledButton.styleFrom(
-                          backgroundColor: Colors.white,
-                          foregroundColor: Colors.red[900],
-                        ),
-                        icon: const Icon(Icons.call, size: 16),
-                        label: const Text('Dial 1930', style: TextStyle(fontWeight: FontWeight.bold)),
-                      ),
-                      const SizedBox(width: 10),
-                      OutlinedButton.icon(
-                        onPressed: () => _showDisputeLetterGenerator(context),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.white,
-                          side: const BorderSide(color: Colors.white),
-                        ),
-                        icon: const Icon(Icons.description, size: 16),
-                        label: const Text('Bank Dispute Letter'),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 24),
-
-            // Directory Header & Search Box
-            const Text(
-              'Verified Official Contacts Directory',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'Never call numbers sent in SMS or found on unofficial websites.',
-              style: TextStyle(fontSize: 12, color: isDark ? Colors.grey[400] : Colors.grey[600]),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              onChanged: (val) => setState(() => _searchQuery = val),
-              decoration: InputDecoration(
-                hintText: 'Search bank, helpline, or portal...',
-                prefixIcon: const Icon(Icons.search, size: 20),
-                filled: true,
-                fillColor: isDark ? const Color(0xFF1E293B) : Colors.white,
-                contentPadding: const EdgeInsets.symmetric(vertical: 10),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: isDark ? Colors.white10 : Colors.black12),
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // Directory List
-            ...filtered.map((item) {
-              return Container(
-                margin: const EdgeInsets.only(bottom: 12),
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: isDark ? const Color(0xFF1E293B) : Colors.white,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: isDark ? Colors.white10 : Colors.black12),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          item.entityName,
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                          decoration: BoxDecoration(
-                            color: Colors.blueAccent.withOpacity(0.12),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(
-                            item.category,
-                            style: const TextStyle(
-                                fontSize: 10, fontWeight: FontWeight.bold, color: Colors.blueAccent),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        const Icon(Icons.phone_in_talk_outlined, size: 16, color: Color(0xFF10B981)),
-                        const SizedBox(width: 8),
-                        Text(
-                          item.primaryContact,
-                          style: const TextStyle(
-                              fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF10B981)),
-                        ),
-                        if (item.alternativeContact != null) ...[
-                          const SizedBox(width: 8),
-                          Text(
-                            '/ ${item.alternativeContact}',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: isDark ? Colors.grey[400] : Colors.grey[600],
-                            ),
-                          ),
-                        ],
-                        const Spacer(),
-                        IconButton(
-                          icon: const Icon(Icons.copy, size: 16),
-                          tooltip: 'Copy Number',
-                          onPressed: () {
-                            Clipboard.setData(ClipboardData(text: item.primaryContact));
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text('Copied ${item.primaryContact} to clipboard'),
-                                behavior: SnackBarBehavior.floating,
-                              ),
-                            );
-                          },
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      item.advice,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: isDark ? Colors.grey[300] : Colors.grey[700],
-                        height: 1.3,
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            }),
-            const SizedBox(height: 32),
-          ],
-        ),
+            )
+          else
+            for (final item in filtered) _buildContactCard(item),
+        ],
       ),
     );
   }

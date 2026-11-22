@@ -6,7 +6,8 @@ import '../../models/scam_radar_item.dart';
 import '../../services/firebase_service.dart';
 import '../../services/pdf_dossier_service.dart';
 import '../../services/vernacular_translation_service.dart';
-import '../widgets/threat_gauge.dart';
+import '../theme/app_theme.dart';
+import '../widgets/common.dart';
 import '../widgets/hybrid_badge.dart';
 import '../widgets/pii_preview_card.dart';
 
@@ -114,28 +115,45 @@ class _ReportScreenState extends State<ReportScreen> {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+  Color get _levelColor {
+    switch (report.threatLevel) {
+      case ThreatLevel.safe:
+        return AppColors.safe;
+      case ThreatLevel.low:
+        return const Color(0xFF06B6D4);
+      case ThreatLevel.suspicious:
+        return AppColors.warn;
+      case ThreatLevel.dangerous:
+        return const Color(0xFFF97316);
+      case ThreatLevel.critical:
+        return AppColors.danger;
+    }
+  }
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text(
-          'Threat Investigation Report',
-          style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18),
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.picture_as_pdf_outlined),
-            tooltip: 'Export PDF Dossier',
-            onPressed: () => PdfDossierService.exportReportDossier(report),
-          ),
-          IconButton(
-            icon: const Icon(Icons.share_outlined),
-            tooltip: 'Copy Threat Summary',
-            onPressed: () {
-              final summary = '''
-🚨 TRACEBACK FRAUD INVESTIGATION REPORT
+  String get _headline {
+    switch (report.threatLevel) {
+      case ThreatLevel.safe:
+        return 'Looks safe';
+      case ThreatLevel.low:
+        return 'Low risk';
+      case ThreatLevel.suspicious:
+        return 'Be careful';
+      case ThreatLevel.dangerous:
+        return 'Likely a scam';
+      case ThreatLevel.critical:
+        return 'Scam detected';
+    }
+  }
+
+  IconData get _levelIcon {
+    if (report.riskScore >= 70) return Icons.gpp_bad_rounded;
+    if (report.riskScore >= 40) return Icons.gpp_maybe_rounded;
+    return Icons.verified_user_rounded;
+  }
+
+  void _copySummary(BuildContext context) {
+    final summary = '''
+TRACEBACK FRAUD INVESTIGATION REPORT
 Risk Score: ${report.riskScore}/100 (${report.threatLevel.name.toUpperCase()})
 Engine: ${report.isLocalInference ? 'On-Device Shield (Local Nano)' : 'Cloud AI (Gemini Flash)'}
 Type: ${report.isChainScan ? 'Multi-Message Threat Chain' : report.isImageScan ? 'Screenshot Scan' : 'Message Scan'}
@@ -149,457 +167,323 @@ ${report.redFlags.map((f) => '• $f').join('\n')}
 Recommended Next Steps:
 ${report.safeNextSteps.map((s) => '• $s').join('\n')}
 ''';
-              Clipboard.setData(ClipboardData(text: summary));
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Threat report copied to clipboard!'),
-                  behavior: SnackBarBehavior.floating,
+    Clipboard.setData(ClipboardData(text: summary));
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Report copied to clipboard')),
+    );
+  }
+
+  Widget _title(String text) => Padding(
+        padding: const EdgeInsets.only(bottom: AppSpacing.md),
+        child: Text(text, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
+      );
+
+  Widget _buildHero() {
+    final color = _levelColor;
+    final hi = _selectedLanguage == 'hi';
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(24),
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [color.withOpacity(0.24), context.surfaceColor],
+        ),
+        border: Border.all(color: color.withOpacity(0.4)),
+      ),
+      child: Column(
+        children: [
+          SizedBox(
+            width: 120,
+            height: 120,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                SizedBox.expand(
+                  child: TweenAnimationBuilder<double>(
+                    tween: Tween(begin: 0, end: report.riskScore.clamp(0, 100) / 100),
+                    duration: const Duration(milliseconds: 900),
+                    curve: Curves.easeOutCubic,
+                    builder: (_, v, __) => CircularProgressIndicator(
+                      value: v,
+                      strokeWidth: 8,
+                      strokeCap: StrokeCap.round,
+                      backgroundColor: color.withOpacity(0.18),
+                      valueColor: AlwaysStoppedAnimation(color),
+                    ),
+                  ),
                 ),
-              );
-            },
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text('${report.riskScore}',
+                        style: TextStyle(
+                            fontSize: 36, fontWeight: FontWeight.w800, color: color, height: 1)),
+                    Text('/ 100', style: TextStyle(fontSize: 12, color: context.mutedText)),
+                  ],
+                ),
+              ],
+            ),
           ),
+          const SizedBox(height: 16),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(_levelIcon, color: color, size: 26),
+              const SizedBox(width: 8),
+              Text(_headline,
+                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: color)),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            hi
+                ? VernacularTranslationService.getHindiSummary(
+                    report.summary, report.threatLevel.name, report.riskScore)
+                : report.summary,
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 15, height: 1.5),
+          ),
+          const SizedBox(height: 14),
+          HybridBadge(isLocal: report.isLocalInference),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Hybrid Engine & Risk Meter Header
-            Center(
-              child: Column(
-                children: [
-                  HybridBadge(isLocal: report.isLocalInference),
-                  const SizedBox(height: 16),
-                  ThreatGauge(score: report.riskScore, level: report.threatLevel),
-                  const SizedBox(height: 16),
+    );
+  }
 
-                  // Language Switcher
+  Widget _buildLanguageToggle() {
+    return SizedBox(
+      width: double.infinity,
+      child: SegmentedButton<String>(
+        showSelectedIcon: false,
+        segments: const [
+          ButtonSegment(value: 'en', label: Text('English')),
+          ButtonSegment(value: 'hi', label: Text('हिंदी / Hinglish')),
+        ],
+        selected: {_selectedLanguage},
+        onSelectionChanged: (s) => setState(() => _selectedLanguage = s.first),
+      ),
+    );
+  }
+
+  Widget _buildNextSteps() {
+    final steps = _selectedLanguage == 'hi'
+        ? VernacularTranslationService.getHindiNextSteps()
+        : report.safeNextSteps;
+    return AppCard(
+      borderColor: AppColors.safe.withOpacity(0.4),
+      child: Column(
+        children: [
+          for (var i = 0; i < steps.length; i++)
+            Padding(
+              padding: EdgeInsets.only(top: i == 0 ? 0 : 12),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
                   Container(
-                    padding: const EdgeInsets.all(4),
+                    width: 24,
+                    height: 24,
+                    alignment: Alignment.center,
                     decoration: BoxDecoration(
-                      color: isDark ? const Color(0xFF1E293B) : const Color(0xFFE2E8F0),
-                      borderRadius: BorderRadius.circular(10),
+                      color: AppColors.safe.withOpacity(0.18),
+                      shape: BoxShape.circle,
                     ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        _buildLangChip('en', '🇬🇧 English', isDark),
-                        const SizedBox(width: 4),
-                        _buildLangChip('hi', '🇮🇳 हिंदी / Hinglish', isDark),
-                      ],
-                    ),
+                    child: Text('${i + 1}',
+                        style: const TextStyle(
+                            fontSize: 12, fontWeight: FontWeight.w800, color: AppColors.safe)),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(steps[i], style: const TextStyle(fontSize: 14.5, height: 1.4)),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 24),
+        ],
+      ),
+    );
+  }
 
-            // If Multi-Message Chain Scan, Show Escalating Timeline
-            if (report.isChainScan && report.chainStages != null && report.chainStages!.isNotEmpty) ...[
-              Text(
-                'Escalating Threat Funnel (${report.chainStages!.length} Steps)',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  color: isDark ? Colors.white : Colors.black87,
-                ),
-              ),
-              const SizedBox(height: 10),
-              ...report.chainStages!.asMap().entries.map((entry) {
-                final stage = entry.value;
-                final isLast = entry.key == report.chainStages!.length - 1;
-                return Container(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: isDark ? const Color(0xFF1E293B) : Colors.white,
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(
-                      color: isLast ? Colors.redAccent.withOpacity(0.5) : (isDark ? Colors.white10 : Colors.black12),
-                      width: isLast ? 1.5 : 1.0,
-                    ),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _buildChain() {
+    final stages = report.chainStages!;
+    return Column(
+      children: [
+        for (var i = 0; i < stages.length; i++)
+          Padding(
+            padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+            child: AppCard(
+              borderColor: i == stages.length - 1 ? AppColors.danger.withOpacity(0.5) : null,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
                     children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Row(
-                            children: [
-                              CircleAvatar(
-                                radius: 10,
-                                backgroundColor: isLast ? Colors.redAccent : Colors.blueAccent,
-                                child: Text(
-                                  '${stage['step']}',
-                                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white),
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                stage['stageName'] ?? 'Escalation Step',
-                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                              ),
-                            ],
-                          ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: isLast ? Colors.red.withOpacity(0.15) : Colors.amber.withOpacity(0.15),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Text(
-                              stage['tacticDetected'] ?? 'Pressure',
-                              style: TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
-                                color: isLast ? Colors.redAccent : Colors.amber[800],
-                              ),
-                            ),
-                          ),
-                        ],
+                      CircleAvatar(
+                        radius: 12,
+                        backgroundColor:
+                            i == stages.length - 1 ? AppColors.danger : AppColors.brand,
+                        child: Text('${stages[i]['step']}',
+                            style: const TextStyle(
+                                fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white)),
                       ),
-                      const SizedBox(height: 8),
-                      Text(
-                        stage['rawMessage'] ?? '',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: isDark ? Colors.grey[300] : Colors.grey[700],
-                        ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(stages[i]['stageName'] ?? 'Escalation step',
+                            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+                      ),
+                      StatusPill(
+                        label: '${stages[i]['tacticDetected'] ?? 'Pressure'}',
+                        color: i == stages.length - 1 ? AppColors.danger : AppColors.warn,
                       ),
                     ],
                   ),
-                );
-              }),
-              const SizedBox(height: 24),
-            ],
-
-            // If Screenshot Scan, Show Image Thumbnail Card
-            if (report.isImageScan && report.imageBase64 != null) ...[
-              Text(
-                'Analyzed Screenshot Evidence',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  color: isDark ? Colors.white : Colors.black87,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: isDark ? const Color(0xFF1E293B) : Colors.white,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: isDark ? Colors.white10 : Colors.black12),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(10),
-                      child: Image.memory(
-                        base64Decode(report.imageBase64!),
-                        height: 160,
-                        width: double.infinity,
-                        fit: BoxFit.cover,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    const Row(
-                      children: [
-                        Icon(Icons.check_circle_outline, color: Color(0xFF10B981), size: 16),
-                        SizedBox(width: 6),
-                        Text(
-                          'Visual OCR & Layout Inspected with Gemini Vision',
-                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF10B981)),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 24),
-            ],
-
-            // Investigation Summary
-            Text(
-              _selectedLanguage == 'hi' ? 'जांच निष्कर्ष (Verdict)' : 'Investigation Verdict',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-                color: isDark ? Colors.white : Colors.black87,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: isDark ? const Color(0xFF1E293B) : Colors.white,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: isDark ? Colors.white10 : Colors.black12),
-              ),
-              child: Text(
-                _selectedLanguage == 'hi'
-                    ? VernacularTranslationService.getHindiSummary(
-                        report.summary, report.threatLevel.name, report.riskScore)
-                    : report.summary,
-                style: TextStyle(
-                  fontSize: 14,
-                  height: 1.5,
-                  color: isDark ? Colors.grey[300] : Colors.grey[800],
-                ),
-              ),
-            ),
-            const SizedBox(height: 24),
-
-            // Detected Attack Tactics
-            if (report.tactics.isNotEmpty) ...[
-              Text(
-                'Social Engineering Tactics',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  color: isDark ? Colors.white : Colors.black87,
-                ),
-              ),
-              const SizedBox(height: 10),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: report.tactics.map((tactic) {
-                  return Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: Colors.redAccent.withOpacity(0.12),
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: Colors.redAccent.withOpacity(0.3)),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.psychology_outlined, size: 16, color: Colors.redAccent),
-                        const SizedBox(width: 6),
-                        Text(
-                          tactic,
-                          style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.redAccent,
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                }).toList(),
-              ),
-              const SizedBox(height: 24),
-            ],
-
-            // Critical Red Flags (Interactive Anatomy Taps)
-            if (report.redFlags.isNotEmpty) ...[
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'Identified Red Flags (${report.redFlags.length})',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      color: isDark ? Colors.white : Colors.black87,
-                    ),
-                  ),
-                  const Text(
-                    'Tap to view anatomy',
-                    style: TextStyle(fontSize: 11, color: Colors.blueAccent, fontWeight: FontWeight.w600),
-                  ),
+                  const SizedBox(height: 10),
+                  Text(stages[i]['rawMessage'] ?? '',
+                      style: TextStyle(fontSize: 14, height: 1.4, color: context.mutedText)),
                 ],
               ),
-              const SizedBox(height: 10),
-              ...report.redFlags.map((flag) {
-                return InkWell(
-                  onTap: () => _showFlagDetails(context, flag),
-                  borderRadius: BorderRadius.circular(10),
-                  child: Container(
-                    margin: const EdgeInsets.only(bottom: 8),
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: isDark ? const Color(0xFF1E293B) : const Color(0xFFFFFBEB),
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(
-                        color: isDark ? Colors.white10 : const Color(0xFFFDE68A),
-                      ),
-                    ),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Icon(Icons.report_problem_rounded, color: Colors.amber, size: 20),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Text(
-                            flag,
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: isDark ? Colors.grey[300] : const Color(0xFF92400E),
-                              height: 1.4,
-                            ),
-                          ),
-                        ),
-                        const Icon(Icons.info_outline, size: 16, color: Colors.amber),
-                      ],
-                    ),
-                  ),
-                );
-              }),
-              const SizedBox(height: 24),
-            ],
-
-            // Actionable Next Steps
-            Text(
-              _selectedLanguage == 'hi' ? 'सुरक्षा और बचाव के आवश्यक कदम' : 'Safe Next Steps Checklist',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-                color: isDark ? Colors.white : Colors.black87,
-              ),
             ),
-            const SizedBox(height: 10),
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: const Color(0xFF10B981).withOpacity(0.08),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: const Color(0xFF10B981).withOpacity(0.3)),
-              ),
-              child: Column(
-                children: (_selectedLanguage == 'hi'
-                        ? VernacularTranslationService.getHindiNextSteps()
-                        : report.safeNextSteps)
-                    .map((step) {
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 4),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Icon(Icons.check_circle_outline, color: Color(0xFF10B981), size: 18),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Text(
-                            step,
-                            style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w500,
-                              color: isDark ? Colors.grey[200] : Colors.grey[900],
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                }).toList(),
-              ),
-            ),
-            const SizedBox(height: 24),
+          ),
+      ],
+    );
+  }
 
-            // PII Privacy Preview
-            PiiPreviewCard(
-              originalText: report.originalSnippet,
-              maskedText: report.maskedSnippet,
-            ),
-            const SizedBox(height: 20),
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Scan result'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.share_outlined),
+            tooltip: 'Copy summary',
+            onPressed: () => _copySummary(context),
+          ),
+          const SizedBox(width: 4),
+        ],
+      ),
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(AppSpacing.screenH, 8, AppSpacing.screenH, 32),
+        children: [
+          _buildHero(),
+          const SizedBox(height: AppSpacing.md),
+          _buildLanguageToggle(),
+          const SizedBox(height: AppSpacing.xl),
 
-            // Official PDF Export Button
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton.icon(
-                onPressed: () => PdfDossierService.exportReportDossier(report),
-                icon: const Icon(Icons.picture_as_pdf_rounded, size: 18),
-                label: const Text('Export Official PDF Forensic Dossier'),
-                style: FilledButton.styleFrom(
-                  backgroundColor: const Color(0xFF1E293B),
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-
-            // Community Contribution Button
-            if (report.riskScore >= 40) ...[
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton.tonalIcon(
-                  onPressed: () => _reportToRadar(context),
-                  icon: const Icon(Icons.add_alert_rounded, size: 18),
-                  label: const Text('Contribute Anonymized Pattern to Radar'),
-                  style: FilledButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 8),
-              const Center(
-                child: Text(
-                  'Zero-Leakage: All names, numbers & accounts are scrubbed before publishing.',
-                  style: TextStyle(fontSize: 11, color: Colors.grey),
-                ),
-              ),
-            ],
-            const SizedBox(height: 32),
+          if (report.safeNextSteps.isNotEmpty) ...[
+            _title(_selectedLanguage == 'hi' ? 'अब क्या करें' : 'What to do now'),
+            _buildNextSteps(),
+            const SizedBox(height: AppSpacing.xl),
           ],
-        ),
+
+          if (report.redFlags.isNotEmpty) ...[
+            _title('Warning signs (${report.redFlags.length})'),
+            for (final flag in report.redFlags)
+              Padding(
+                padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                child: AppCard(
+                  padding: const EdgeInsets.all(14),
+                  onTap: () => _showFlagDetails(context, flag),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Icon(Icons.report_problem_rounded, color: AppColors.warn, size: 22),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(flag, style: const TextStyle(fontSize: 14.5, height: 1.4)),
+                      ),
+                      Icon(Icons.info_outline_rounded, size: 18, color: context.mutedText),
+                    ],
+                  ),
+                ),
+              ),
+            Text('Tap a warning sign to learn why it matters.',
+                style: TextStyle(fontSize: 13, color: context.mutedText)),
+            const SizedBox(height: AppSpacing.xl),
+          ],
+
+          if (report.tactics.isNotEmpty) ...[
+            _title('Manipulation tactics'),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final t in report.tactics)
+                  StatusPill(label: t, color: AppColors.danger, icon: Icons.psychology_outlined),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.xl),
+          ],
+
+          if (report.isChainScan &&
+              report.chainStages != null &&
+              report.chainStages!.isNotEmpty) ...[
+            _title('How the scam escalated (${report.chainStages!.length} steps)'),
+            _buildChain(),
+            const SizedBox(height: AppSpacing.xl),
+          ],
+
+          if (report.isImageScan && report.imageBase64 != null) ...[
+            _title('Screenshot checked'),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(18),
+              child: Image.memory(
+                base64Decode(report.imageBase64!),
+                height: 200,
+                width: double.infinity,
+                fit: BoxFit.cover,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.xl),
+          ],
+
+          PiiPreviewCard(
+            originalText: report.originalSnippet,
+            maskedText: report.maskedSnippet,
+          ),
+          if (report.riskScore >= 40) ...[
+            const SizedBox(height: AppSpacing.md),
+            Text(
+              'Sharing to the Radar removes names, numbers and account details first.',
+              style: TextStyle(fontSize: 13, color: context.mutedText),
+            ),
+          ],
+        ],
       ),
       bottomNavigationBar: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
-          color: isDark ? const Color(0xFF0F172A) : Colors.white,
-          border: Border(top: BorderSide(color: isDark ? Colors.white10 : Colors.black12)),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.08),
-              blurRadius: 8,
-              offset: const Offset(0, -2),
-            ),
-          ],
+          color: context.isDark ? const Color(0xFF0D1424) : Colors.white,
+          border: Border(top: BorderSide(color: context.outlineColor)),
         ),
         child: SafeArea(
-          child: Row(
-            children: [
-              Expanded(
-                flex: 3,
-                child: FilledButton.icon(
-                  onPressed: () => PdfDossierService.exportReportDossier(report),
-                  icon: const Icon(Icons.picture_as_pdf_rounded, size: 18),
-                  label: const Text('Export PDF Dossier',
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: const Color(0xFF2563EB),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+            child: Row(
+              children: [
+                Expanded(
+                  flex: 3,
+                  child: FilledButton.icon(
+                    onPressed: () => PdfDossierService.exportReportDossier(report),
+                    icon: const Icon(Icons.picture_as_pdf_rounded, size: 20),
+                    label: const Text('Export PDF'),
                   ),
                 ),
-              ),
-              if (report.riskScore >= 40) ...[
-                const SizedBox(width: 10),
-                Expanded(
-                  flex: 2,
-                  child: OutlinedButton.icon(
-                    onPressed: () => _reportToRadar(context),
-                    icon: const Icon(Icons.add_alert_rounded, size: 16, color: Colors.amber),
-                    label: const Text('Radar Alert',
-                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                if (report.riskScore >= 40) ...[
+                  const SizedBox(width: 10),
+                  Expanded(
+                    flex: 2,
+                    child: OutlinedButton.icon(
+                      onPressed: () => _reportToRadar(context),
+                      icon: const Icon(Icons.campaign_outlined, size: 20),
+                      label: const Text('Warn others'),
+                      style: OutlinedButton.styleFrom(minimumSize: const Size(64, 52)),
                     ),
                   ),
-                ),
+                ],
               ],
-            ],
+            ),
           ),
         ),
       ),
@@ -719,42 +603,6 @@ ${report.safeNextSteps.map((s) => '• $s').join('\n')}
           },
         );
       },
-    );
-  }
-
-  Widget _buildLangChip(String code, String label, bool isDark) {
-    final isSelected = _selectedLanguage == code;
-    return InkWell(
-      onTap: () => setState(() => _selectedLanguage = code),
-      borderRadius: BorderRadius.circular(8),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        decoration: BoxDecoration(
-          color: isSelected
-              ? (isDark ? const Color(0xFF334155) : Colors.white)
-              : Colors.transparent,
-          borderRadius: BorderRadius.circular(8),
-          boxShadow: isSelected
-              ? [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.08),
-                    blurRadius: 4,
-                    offset: const Offset(0, 1),
-                  )
-                ]
-              : null,
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: 11,
-            fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-            color: isSelected
-                ? (isDark ? Colors.white : Colors.black87)
-                : Colors.grey,
-          ),
-        ),
-      ),
     );
   }
 }

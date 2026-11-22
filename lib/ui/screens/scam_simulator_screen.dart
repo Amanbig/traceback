@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../models/simulator_scenario.dart';
-import 'investigate_screen.dart';
+import '../theme/app_theme.dart';
+import '../widgets/common.dart';
+import 'scan/message_scan_screen.dart';
 
 class ScamSimulatorScreen extends StatefulWidget {
   const ScamSimulatorScreen({super.key});
@@ -10,18 +13,36 @@ class ScamSimulatorScreen extends StatefulWidget {
 }
 
 class _ScamSimulatorScreenState extends State<ScamSimulatorScreen> {
+  final ScrollController _scroll = ScrollController();
+  final GlobalKey _feedbackKey = GlobalKey();
+
   int _currentIndex = 0;
   int _score = 0;
   int? _selectedOption;
   bool _answered = false;
 
+  @override
+  void dispose() {
+    _scroll.dispose();
+    super.dispose();
+  }
+
   void _chooseOption(int index) {
     if (_answered) return;
+    final correct = index == SimulatorScenario.scenarios[_currentIndex].correctOptionIndex;
+    correct ? HapticFeedback.lightImpact() : HapticFeedback.heavyImpact();
     setState(() {
       _selectedOption = index;
       _answered = true;
-      if (index == SimulatorScenario.scenarios[_currentIndex].correctOptionIndex) {
-        _score++;
+      if (correct) _score++;
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final ctx = _feedbackKey.currentContext;
+      if (ctx != null) {
+        Scrollable.ensureVisible(ctx,
+            duration: const Duration(milliseconds: 350),
+            curve: Curves.easeOut,
+            alignmentPolicy: ScrollPositionAlignmentPolicy.keepVisibleAtEnd);
       }
     });
   }
@@ -32,6 +53,7 @@ class _ScamSimulatorScreenState extends State<ScamSimulatorScreen> {
       _selectedOption = null;
       _answered = false;
     });
+    if (_scroll.hasClients) _scroll.jumpTo(0);
   }
 
   void _restartSimulator() {
@@ -41,362 +63,303 @@ class _ScamSimulatorScreenState extends State<ScamSimulatorScreen> {
       _selectedOption = null;
       _answered = false;
     });
+    if (_scroll.hasClients) _scroll.jumpTo(0);
   }
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final totalScenarios = SimulatorScenario.scenarios.length;
-    final isFinished = _currentIndex >= totalScenarios;
+    final total = SimulatorScenario.scenarios.length;
+    final isFinished = _currentIndex >= total;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Row(
-          children: [
-            Icon(Icons.sports_esports_outlined, color: Colors.blueAccent),
-            SizedBox(width: 10),
-            Text('Cyber Defender Simulator',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-          ],
-        ),
-      ),
-      body: isFinished
-          ? _buildCompletedView(isDark, totalScenarios)
-          : _buildScenarioView(isDark, totalScenarios),
+      appBar: AppBar(title: const Text('Scam simulator')),
+      body: isFinished ? _buildCompletedView(total) : _buildScenarioView(total),
     );
   }
 
-  Widget _buildScenarioView(bool isDark, int totalScenarios) {
+  Widget _buildScenarioView(int total) {
     final scenario = SimulatorScenario.scenarios[_currentIndex];
     final isCorrect = _selectedOption == scenario.correctOptionIndex;
+    final isLast = _currentIndex == total - 1;
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+    return Column(
+      children: [
+        Expanded(
+          child: ListView(
+            controller: _scroll,
+            padding: const EdgeInsets.fromLTRB(AppSpacing.screenH, 4, AppSpacing.screenH, 24),
+            children: [
+              Row(
+                children: [
+                  Text('Question ${_currentIndex + 1} of $total',
+                      style: TextStyle(
+                          fontSize: 13, fontWeight: FontWeight.w600, color: context.mutedText)),
+                  const Spacer(),
+                  StatusPill(
+                      label: 'Score $_score', color: AppColors.brand, icon: Icons.star_rounded),
+                ],
+              ),
+              const SizedBox(height: 10),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(6),
+                child: LinearProgressIndicator(
+                  value: (_currentIndex + (_answered ? 1 : 0)) / total,
+                  minHeight: 6,
+                  backgroundColor: context.outlineColor,
+                  valueColor: const AlwaysStoppedAnimation(AppColors.brand),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.xl),
+              Text(scenario.title,
+                  style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 22)),
+              const SizedBox(height: 6),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: StatusPill(label: scenario.category, color: AppColors.danger),
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              _buildMessageBubble(scenario),
+              const SizedBox(height: AppSpacing.xl),
+              Text(scenario.promptQuestion,
+                  style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16, height: 1.35)),
+              const SizedBox(height: AppSpacing.md),
+              for (var i = 0; i < scenario.options.length; i++)
+                _buildOption(i, scenario),
+              if (_answered) ...[
+                const SizedBox(height: AppSpacing.sm),
+                KeyedSubtree(key: _feedbackKey, child: _buildFeedback(scenario, isCorrect)),
+              ],
+            ],
+          ),
+        ),
+        if (_answered)
+          Container(
+            decoration: BoxDecoration(
+              color: context.isDark ? const Color(0xFF0D1424) : Colors.white,
+              border: Border(top: BorderSide(color: context.outlineColor)),
+            ),
+            child: SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    onPressed: _nextScenario,
+                    icon: Icon(isLast ? Icons.flag_rounded : Icons.arrow_forward_rounded),
+                    label: Text(isLast ? 'See my results' : 'Next question'),
+                  ),
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildMessageBubble(SimulatorScenario scenario) {
+    return AppCard(
+      color: context.surfaceHighColor,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Progress bar
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'SCENARIO ${_currentIndex + 1} OF $totalScenarios',
-                style: const TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 0.8,
-                  color: Colors.blueAccent,
-                ),
-              ),
-              Text(
-                'Score: $_score',
-                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+              Icon(Icons.mark_chat_unread_outlined, size: 18, color: context.mutedText),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(scenario.sender,
+                    style: TextStyle(
+                        fontSize: 13, fontWeight: FontWeight.w600, color: context.mutedText)),
               ),
             ],
           ),
-          const SizedBox(height: 8),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(4),
-            child: LinearProgressIndicator(
-              value: (_currentIndex + 1) / totalScenarios,
-              minHeight: 6,
-              backgroundColor: isDark ? Colors.white10 : Colors.black12,
-              valueColor: const AlwaysStoppedAnimation<Color>(Colors.blueAccent),
-            ),
-          ),
-          const SizedBox(height: 20),
-
-          // Title & Category
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                scenario.title,
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: Colors.redAccent.withOpacity(0.12),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Text(
-                  scenario.category,
-                  style: const TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.redAccent,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-
-          // Simulated Incoming Message Box
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: isDark ? Colors.white10 : Colors.black12),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    const Icon(Icons.mark_chat_unread_outlined, size: 16, color: Colors.grey),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        scenario.sender,
-                        style: const TextStyle(fontSize: 11, color: Colors.grey, fontWeight: FontWeight.w600),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  scenario.simulatedMessage,
-                  style: const TextStyle(fontSize: 13, height: 1.4, fontFamily: 'monospace'),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 20),
-
-          // Question Prompt
-          Text(
-            scenario.promptQuestion,
-            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-          ),
-          const SizedBox(height: 12),
-
-          // Multiple Choice Options
-          ...scenario.options.asMap().entries.map((entry) {
-            final idx = entry.key;
-            final text = entry.value;
-
-            Color borderColor = isDark ? Colors.white10 : Colors.black12;
-            Color bgColor = isDark ? const Color(0xFF1E293B) : Colors.white;
-
-            if (_answered) {
-              if (idx == scenario.correctOptionIndex) {
-                borderColor = const Color(0xFF10B981);
-                bgColor = const Color(0xFF10B981).withOpacity(0.12);
-              } else if (idx == _selectedOption) {
-                borderColor = Colors.redAccent;
-                bgColor = Colors.redAccent.withOpacity(0.12);
-              }
-            }
-
-            return Container(
-              margin: const EdgeInsets.only(bottom: 10),
-              child: InkWell(
-                onTap: _answered ? null : () => _chooseOption(idx),
-                borderRadius: BorderRadius.circular(12),
-                child: Container(
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: bgColor,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: borderColor, width: 1.5),
-                  ),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Container(
-                        width: 22,
-                        height: 22,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          border: Border.all(color: borderColor),
-                          color: _answered && idx == scenario.correctOptionIndex
-                              ? const Color(0xFF10B981)
-                              : Colors.transparent,
-                        ),
-                        child: Center(
-                          child: Text(
-                            String.fromCharCode(65 + idx),
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.bold,
-                              color: _answered && idx == scenario.correctOptionIndex
-                                  ? Colors.white
-                                  : null,
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          text,
-                          style: const TextStyle(fontSize: 13, height: 1.3),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            );
-          }),
-
-          // Feedback & Explanation Box
-          if (_answered) ...[
-            const SizedBox(height: 10),
-            Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: isCorrect
-                    ? const Color(0xFF10B981).withOpacity(0.12)
-                    : Colors.redAccent.withOpacity(0.12),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: isCorrect ? const Color(0xFF10B981) : Colors.redAccent,
-                ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(
-                        isCorrect ? Icons.check_circle_rounded : Icons.cancel_rounded,
-                        color: isCorrect ? const Color(0xFF10B981) : Colors.redAccent,
-                        size: 20,
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        isCorrect ? 'EXCELLENT DEFENSE!' : 'SCAM TRAP TRIGGERED!',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: isCorrect ? const Color(0xFF10B981) : Colors.redAccent,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    scenario.explanation,
-                    style: const TextStyle(fontSize: 12, height: 1.4),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // Next Question Button
-            SizedBox(
-              width: double.infinity,
-              height: 48,
-              child: FilledButton.icon(
-                onPressed: _nextScenario,
-                icon: const Icon(Icons.arrow_forward_rounded, size: 18),
-                label: Text(
-                  _currentIndex == totalScenarios - 1 ? 'View Final Results' : 'Next Scenario',
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                ),
-              ),
-            ),
-          ],
-          const SizedBox(height: 30),
+          const SizedBox(height: 10),
+          Text(scenario.simulatedMessage, style: const TextStyle(fontSize: 15, height: 1.5)),
         ],
       ),
     );
   }
 
-  Widget _buildCompletedView(bool isDark, int totalScenarios) {
-    final percentage = ((_score / totalScenarios) * 100).toInt();
-    final isMaster = percentage >= 75;
+  Widget _buildOption(int idx, SimulatorScenario scenario) {
+    final isRight = _answered && idx == scenario.correctOptionIndex;
+    final isWrong = _answered && idx == _selectedOption && !isRight;
+    final color = isRight
+        ? AppColors.safe
+        : isWrong
+            ? AppColors.danger
+            : null;
 
-    return Center(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+      child: AppCard(
+        onTap: _answered ? null : () => _chooseOption(idx),
+        borderColor: color,
+        color: color?.withOpacity(0.10),
+        padding: const EdgeInsets.all(14),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
-              padding: const EdgeInsets.all(20),
+              width: 28,
+              height: 28,
+              alignment: Alignment.center,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: (isMaster ? const Color(0xFF10B981) : Colors.orangeAccent).withOpacity(0.15),
+                color: color ?? context.surfaceHighColor,
               ),
-              child: Icon(
-                isMaster ? Icons.verified_user_rounded : Icons.security_rounded,
-                size: 64,
-                color: isMaster ? const Color(0xFF10B981) : Colors.orangeAccent,
-              ),
+              child: isRight || isWrong
+                  ? Icon(isRight ? Icons.check_rounded : Icons.close_rounded,
+                      size: 18, color: Colors.white)
+                  : Text(String.fromCharCode(65 + idx),
+                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
             ),
-            const SizedBox(height: 16),
-            Text(
-              isMaster ? 'CERTIFIED CYBER DEFENDER' : 'DEFENSE SKILLS DEVELOPING',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w900,
-                letterSpacing: 0.8,
-                color: isMaster ? const Color(0xFF10B981) : Colors.orangeAccent,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'You successfully identified $_score out of $totalScenarios attack vectors ($percentage%).',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 14, color: isDark ? Colors.grey[300] : Colors.grey[700]),
-            ),
-            const SizedBox(height: 24),
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF8FAFC),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: isDark ? Colors.white10 : Colors.black12),
-              ),
-              child: const Column(
-                children: [
-                  Text('Core Takeaway Rules for Digital Safety:',
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                  SizedBox(height: 8),
-                  Text(
-                    '1. Police/CBI never arrest or interrogate via Skype/WhatsApp.\n'
-                    '2. In UPI, you NEVER scan a QR code or enter your PIN to receive money.\n'
-                    '3. Never install APK files sent on WhatsApp/SMS to claim rewards.\n'
-                    '4. If someone creates extreme panic with a time limit, it is a scam.',
-                    style: TextStyle(fontSize: 11, height: 1.5),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 24),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: _restartSimulator,
-                    icon: const Icon(Icons.refresh_rounded, size: 18),
-                    label: const Text('Try Again'),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: FilledButton.icon(
-                    onPressed: () {
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(builder: (context) => const InvestigateScreen()),
-                      );
-                    },
-                    icon: const Icon(Icons.fingerprint_rounded, size: 18),
-                    label: const Text('Forensics Lab'),
-                  ),
-                ),
-              ],
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(scenario.options[idx], style: const TextStyle(fontSize: 14.5, height: 1.4)),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildFeedback(SimulatorScenario scenario, bool isCorrect) {
+    final color = isCorrect ? AppColors.safe : AppColors.danger;
+    return AppCard(
+      borderColor: color.withOpacity(0.5),
+      color: color.withOpacity(0.08),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(isCorrect ? Icons.check_circle_rounded : Icons.cancel_rounded,
+                  color: color, size: 22),
+              const SizedBox(width: 8),
+              Text(isCorrect ? 'Correct' : 'That would have been a trap',
+                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: color)),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(scenario.explanation, style: const TextStyle(fontSize: 14.5, height: 1.5)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCompletedView(int total) {
+    final percentage = ((_score / total) * 100).round();
+    final isMaster = percentage >= 75;
+    final color = isMaster ? AppColors.safe : AppColors.warn;
+
+    return ListView(
+      controller: _scroll,
+      padding: const EdgeInsets.fromLTRB(AppSpacing.screenH, 16, AppSpacing.screenH, 32),
+      children: [
+        Center(
+          child: SizedBox(
+            width: 140,
+            height: 140,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                SizedBox.expand(
+                  child: TweenAnimationBuilder<double>(
+                    tween: Tween(begin: 0, end: _score / total),
+                    duration: const Duration(milliseconds: 900),
+                    curve: Curves.easeOutCubic,
+                    builder: (_, v, __) => CircularProgressIndicator(
+                      value: v,
+                      strokeWidth: 10,
+                      strokeCap: StrokeCap.round,
+                      backgroundColor: color.withOpacity(0.18),
+                      valueColor: AlwaysStoppedAnimation(color),
+                    ),
+                  ),
+                ),
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text('$_score/$total',
+                        style: TextStyle(
+                            fontSize: 34, fontWeight: FontWeight.w800, color: color, height: 1)),
+                    Text('$percentage%', style: TextStyle(color: context.mutedText)),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: AppSpacing.xl),
+        Text(
+          isMaster ? 'Well done, you spot scams' : 'Good start, keep practising',
+          textAlign: TextAlign.center,
+          style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: color),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'You handled $_score of $total scam situations correctly.',
+          textAlign: TextAlign.center,
+          style: TextStyle(fontSize: 15, color: context.mutedText),
+        ),
+        const SizedBox(height: AppSpacing.xl),
+        const SectionHeader('Rules to remember'),
+        const AppCard(
+          child: Column(
+            children: [
+              _Rule('Police and CBI never arrest or question you over Skype or WhatsApp.'),
+              _Rule('In UPI you never scan a QR code or enter your PIN to receive money.'),
+              _Rule('Never install an APK sent over WhatsApp or SMS.'),
+              _Rule('If someone creates panic with a deadline, treat it as a scam.'),
+            ],
+          ),
+        ),
+        const SizedBox(height: AppSpacing.xl),
+        SizedBox(
+          width: double.infinity,
+          child: FilledButton.icon(
+            onPressed: () {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (context) => const MessageScanScreen()),
+              );
+            },
+            icon: const Icon(Icons.search_rounded),
+            label: const Text('Scan a real message'),
+          ),
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: _restartSimulator,
+            icon: const Icon(Icons.refresh_rounded, size: 20),
+            label: const Text('Play again'),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _Rule extends StatelessWidget {
+  final String text;
+  const _Rule(this.text);
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Padding(
+            padding: EdgeInsets.only(top: 2),
+            child: Icon(Icons.check_circle_rounded, size: 18, color: AppColors.safe),
+          ),
+          const SizedBox(width: 10),
+          Expanded(child: Text(text, style: const TextStyle(fontSize: 14.5, height: 1.4))),
+        ],
       ),
     );
   }

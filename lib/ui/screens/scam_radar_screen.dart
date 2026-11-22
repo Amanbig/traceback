@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../models/scam_radar_item.dart';
 import '../../services/firebase_service.dart';
+import '../theme/app_theme.dart';
+import '../widgets/common.dart';
 import 'scam_simulator_screen.dart';
 
 class ScamRadarScreen extends StatefulWidget {
@@ -31,7 +33,7 @@ class _ScamRadarScreenState extends State<ScamRadarScreen> {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) => AlertDialog(
-          title: const Text('Report a New Scam Pattern'),
+          title: const Text('Report a scam'),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -40,7 +42,7 @@ class _ScamRadarScreenState extends State<ScamRadarScreen> {
                 TextField(
                   controller: titleController,
                   decoration: const InputDecoration(
-                    labelText: 'Scam Title (e.g., Fake Courier Customs)',
+                    labelText: 'Title (e.g. Fake courier customs fee)',
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -63,8 +65,8 @@ class _ScamRadarScreenState extends State<ScamRadarScreen> {
                   controller: messageController,
                   maxLines: 3,
                   decoration: const InputDecoration(
-                    labelText: 'Intercepted Message Text',
-                    hintText: 'Paste the exact text of the scam message...',
+                    labelText: 'Scam message',
+                    hintText: 'Paste the message you received',
                   ),
                 ),
               ],
@@ -79,7 +81,12 @@ class _ScamRadarScreenState extends State<ScamRadarScreen> {
               onPressed: () async {
                 final title = titleController.text.trim();
                 final msg = messageController.text.trim();
-                if (title.isEmpty || msg.isEmpty) return;
+                if (title.isEmpty || msg.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Add a title and the message text first.')),
+                  );
+                  return;
+                }
 
                 final newItem = ScamRadarItem(
                   id: DateTime.now().millisecondsSinceEpoch.toString(),
@@ -98,13 +105,13 @@ class _ScamRadarScreenState extends State<ScamRadarScreen> {
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
-                      content: Text('Scam pattern submitted to Community Radar!'),
+                      content: Text('Thanks. Your report was added to the Radar.'),
                       behavior: SnackBarBehavior.floating,
                     ),
                   );
                 }
               },
-              child: const Text('Submit Report'),
+              child: const Text('Submit'),
             ),
           ],
         ),
@@ -112,32 +119,35 @@ class _ScamRadarScreenState extends State<ScamRadarScreen> {
     );
   }
 
+  static const _categories = [
+    'All',
+    'Authority Impersonation',
+    'Financial Phishing',
+    'Urgency & Utility',
+    'Mobile Malware',
+    'Investment & Job Fraud'
+  ];
+
+  Color _severityColor(String s) {
+    switch (s.toLowerCase()) {
+      case 'critical':
+        return AppColors.danger;
+      case 'high':
+        return const Color(0xFFF97316);
+      default:
+        return AppColors.warn;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    final categories = [
-      'All',
-      'Authority Impersonation',
-      'Financial Phishing',
-      'Urgency & Utility',
-      'Mobile Malware',
-      'Investment & Job Fraud'
-    ];
-
     return Scaffold(
       appBar: AppBar(
-        title: const Row(
-          children: [
-            Icon(Icons.radar, color: Colors.blueAccent),
-            SizedBox(width: 10),
-            Text('Community Scam Radar', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-          ],
-        ),
+        title: const Text('Scam Radar'),
         actions: [
           IconButton(
             icon: const Icon(Icons.sports_esports_outlined),
-            tooltip: 'Cyber Defender Simulator',
+            tooltip: 'Scam simulator',
             onPressed: () {
               Navigator.push(
                 context,
@@ -145,12 +155,13 @@ class _ScamRadarScreenState extends State<ScamRadarScreen> {
               );
             },
           ),
+          const SizedBox(width: 4),
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showReportDialog(context),
-        icon: const Icon(Icons.add_alert_rounded),
-        label: const Text('Report Scam'),
+        icon: const Icon(Icons.campaign_outlined),
+        label: const Text('Report a scam'),
       ),
       body: StreamBuilder<List<ScamRadarItem>>(
         stream: FirebaseService.streamCommunityScams(),
@@ -168,69 +179,58 @@ class _ScamRadarScreenState extends State<ScamRadarScreen> {
 
           return Column(
             children: [
-              // Search Bar
               Padding(
-                padding: const EdgeInsets.fromLTRB(16, 10, 16, 4),
+                padding: const EdgeInsets.fromLTRB(AppSpacing.screenH, 4, AppSpacing.screenH, 0),
                 child: TextField(
                   controller: _searchController,
-                  onChanged: (val) => setState(() {}),
+                  onChanged: (_) => setState(() {}),
+                  textInputAction: TextInputAction.search,
                   decoration: InputDecoration(
-                    hintText: 'Search scams (e.g. FedEx, Electricity, Skype)...',
-                    hintStyle: TextStyle(
-                      fontSize: 13,
-                      color: isDark ? Colors.grey[500] : Colors.grey[400],
-                    ),
-                    prefixIcon: const Icon(Icons.search, size: 20),
+                    hintText: 'Search scams, e.g. courier, electricity',
+                    prefixIcon: const Icon(Icons.search_rounded),
                     suffixIcon: _searchController.text.isNotEmpty
                         ? IconButton(
-                            icon: const Icon(Icons.clear, size: 16),
+                            icon: const Icon(Icons.close_rounded),
+                            tooltip: 'Clear',
                             onPressed: () => setState(() => _searchController.clear()),
                           )
                         : null,
-                    filled: true,
-                    fillColor: isDark ? const Color(0xFF1E293B) : Colors.white,
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: isDark ? Colors.white10 : Colors.black12),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: isDark ? Colors.white10 : Colors.black12),
-                    ),
                   ),
                 ),
               ),
-
-              // Filter Chips
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                child: Row(
-                  children: categories.map((cat) {
-                    final isSelected = _selectedCategory == cat;
-                    return Padding(
-                      padding: const EdgeInsets.only(right: 8),
-                      child: FilterChip(
-                        label: Text(cat),
-                        selected: isSelected,
-                        onSelected: (_) => setState(() => _selectedCategory = cat),
-                        selectedColor: Colors.blueAccent.withOpacity(0.2),
-                        checkmarkColor: Colors.blueAccent,
-                      ),
+              SizedBox(
+                height: 56,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.screenH, vertical: 10),
+                  itemCount: _categories.length,
+                  separatorBuilder: (_, __) => const SizedBox(width: 8),
+                  itemBuilder: (_, i) {
+                    final cat = _categories[i];
+                    return ChoiceChip(
+                      label: Text(cat),
+                      selected: _selectedCategory == cat,
+                      showCheckmark: false,
+                      onSelected: (_) => setState(() => _selectedCategory = cat),
                     );
-                  }).toList(),
+                  },
                 ),
               ),
               Expanded(
-                child: ListView.builder(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 80),
-                  itemCount: filtered.length,
-                  itemBuilder: (context, index) {
-                    final scam = filtered[index];
-                    return _buildScamCard(context, scam, isDark);
-                  },
-                ),
+                child: filtered.isEmpty
+                    ? const EmptyState(
+                        icon: Icons.search_off_rounded,
+                        title: 'No matching scams',
+                        message: 'Try a different word or pick another category.',
+                      )
+                    : ListView.builder(
+                        padding: const EdgeInsets.fromLTRB(
+                            AppSpacing.screenH, 4, AppSpacing.screenH, 96),
+                        itemCount: filtered.length,
+                        itemBuilder: (context, index) =>
+                            _buildScamCard(context, filtered[index]),
+                      ),
               ),
             ],
           );
@@ -239,133 +239,128 @@ class _ScamRadarScreenState extends State<ScamRadarScreen> {
     );
   }
 
-  Widget _buildScamCard(BuildContext context, ScamRadarItem scam, bool isDark) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1E293B) : Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: isDark ? Colors.white10 : Colors.black12),
-      ),
-      child: ExpansionTile(
-        tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        leading: Container(
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            color: Colors.redAccent.withOpacity(0.12),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: const Icon(Icons.shield_outlined, color: Colors.redAccent),
+  Widget _sectionLabel(String t) => Padding(
+        padding: const EdgeInsets.only(top: 14, bottom: 6),
+        child: Text(t, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+      );
+
+  Widget _buildScamCard(BuildContext context, ScamRadarItem scam) {
+    final sev = _severityColor(scam.severity);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.md),
+      child: Container(
+        decoration: BoxDecoration(
+          color: context.surfaceColor,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: context.outlineColor),
         ),
-        title: Text(
-          scam.title,
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
-        ),
-        subtitle: Row(
-          children: [
-            Text(
-              scam.category,
-              style: TextStyle(
-                fontSize: 12,
-                color: isDark ? Colors.grey[400] : Colors.grey[600],
+        clipBehavior: Clip.antiAlias,
+        child: Theme(
+          data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+          child: ExpansionTile(
+            tilePadding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+            childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            expandedCrossAxisAlignment: CrossAxisAlignment.start,
+            shape: const Border(),
+            collapsedShape: const Border(),
+            title: Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: Row(
+                children: [
+                  StatusPill(label: scam.severity, color: sev),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(scam.category,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(fontSize: 12.5, color: context.mutedText)),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(width: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-              decoration: BoxDecoration(
-                color: Colors.red.withOpacity(0.15),
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: Text(
-                scam.severity.toUpperCase(),
-                style: const TextStyle(
-                  fontSize: 9,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.red,
-                ),
-              ),
-            ),
-          ],
-        ),
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
+            subtitle: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Intercepted Sample Message:',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                Text(scam.title,
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w700, fontSize: 16, height: 1.25)),
+                const SizedBox(height: 4),
+                Text(scam.modusOperandi,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(fontSize: 13.5, height: 1.35, color: context.mutedText)),
+              ],
+            ),
+            children: [
+              _sectionLabel('Example message'),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: context.surfaceHighColor,
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                const SizedBox(height: 6),
+                child: Text(scam.sampleText,
+                    style: const TextStyle(fontSize: 13.5, height: 1.4)),
+              ),
+              if (scam.warningSigns.isNotEmpty) ...[
+                _sectionLabel('Warning signs'),
+                for (final sign in scam.warningSigns)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 3),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Padding(
+                          padding: EdgeInsets.only(top: 2),
+                          child: Icon(Icons.warning_amber_rounded,
+                              size: 16, color: AppColors.warn),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(sign, style: const TextStyle(fontSize: 14, height: 1.4)),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+              if (scam.safetyTip.isNotEmpty) ...[
+                const SizedBox(height: 12),
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: isDark ? Colors.white10 : Colors.black12),
+                    color: AppColors.safe.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Text(
-                    scam.sampleText,
-                    style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                const Text(
-                  'Modus Operandi:',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  scam.modusOperandi,
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: isDark ? Colors.grey[300] : Colors.grey[700],
-                    height: 1.4,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                const Text(
-                  'Warning Signs:',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                ),
-                const SizedBox(height: 4),
-                ...scam.warningSigns.map((sign) => Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 2),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Icon(Icons.arrow_right, size: 18, color: Colors.orangeAccent),
-                          Expanded(
-                            child: Text(
-                              sign,
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: isDark ? Colors.grey[300] : Colors.grey[800],
-                              ),
-                            ),
-                          ),
-                        ],
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Icon(Icons.lightbulb_outline_rounded,
+                          size: 18, color: AppColors.safe),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(scam.safetyTip,
+                            style: const TextStyle(fontSize: 14, height: 1.4)),
                       ),
-                    )),
-                const SizedBox(height: 16),
-                if (widget.onSelectSample != null)
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton.icon(
-                      onPressed: () {
-                        widget.onSelectSample!(scam.sampleText);
-                      },
-                      icon: const Icon(Icons.shield_outlined, size: 18),
-                      label: const Text('Investigate This Pattern'),
-                    ),
+                    ],
                   ),
+                ),
               ],
-            ),
+              if (widget.onSelectSample != null) ...[
+                const SizedBox(height: 14),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: () => widget.onSelectSample!(scam.sampleText),
+                    icon: const Icon(Icons.search_rounded, size: 18),
+                    label: const Text('Scan a similar message'),
+                  ),
+                ),
+              ],
+            ],
           ),
-        ],
+        ),
       ),
     );
   }

@@ -28,6 +28,19 @@ class HistoryService {
     await prefs.setStringList(_key, rawList);
   }
 
+  static Future<void> deleteReport(String id) async {
+    final prefs = await SharedPreferences.getInstance();
+    final rawList = prefs.getStringList(_key) ?? [];
+    rawList.removeWhere((item) {
+      try {
+        return ThreatReport.fromJson(item).id == id;
+      } catch (_) {
+        return false;
+      }
+    });
+    await prefs.setStringList(_key, rawList);
+  }
+
   static Future<void> clearHistory() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_key);

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dashboard_screen.dart';
-import 'investigate_screen.dart';
+import 'scan/message_scan_screen.dart';
+import 'scan/scan_hub_screen.dart';
 import 'scam_radar_screen.dart';
 import 'history_screen.dart';
 
@@ -18,7 +19,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => InvestigateScreen(initialText: sampleText),
+        builder: (context) => MessageScanScreen(initialText: sampleText),
       ),
     );
   }
@@ -29,7 +30,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
       DashboardScreen(
         onNavigateTab: (index) => setState(() => _currentIndex = index),
       ),
-      const InvestigateScreen(),
+      const ScanHubScreen(),
       ScamRadarScreen(onSelectSample: _onSelectSampleFromRadar),
       const HistoryScreen(),
     ];
@@ -46,17 +47,17 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
           NavigationDestination(
             icon: Icon(Icons.dashboard_outlined),
             selectedIcon: Icon(Icons.dashboard),
-            label: 'Dashboard',
+            label: 'Home',
           ),
           NavigationDestination(
-            icon: Icon(Icons.fingerprint_rounded),
-            selectedIcon: Icon(Icons.fingerprint),
-            label: 'Forensics',
+            icon: Icon(Icons.search_rounded),
+            selectedIcon: Icon(Icons.manage_search_rounded),
+            label: 'Scan',
           ),
           NavigationDestination(
             icon: Icon(Icons.radar_outlined),
             selectedIcon: Icon(Icons.radar),
-            label: 'Scam Radar',
+            label: 'Radar',
           ),
           NavigationDestination(
             icon: Icon(Icons.history_outlined),

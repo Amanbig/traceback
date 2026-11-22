@@ -1,5 +1,10 @@
 import 'package:flutter/material.dart';
+import '../theme/app_theme.dart';
 
+/// Progress dialog shown while a scan runs.
+///
+/// Back navigation is blocked on purpose: the caller dismisses this dialog
+/// itself, and a stray back press would otherwise pop the screen underneath.
 class ForensicAnalysisHud extends StatefulWidget {
   final int stage; // 1 to 4
   final bool isLocal;
@@ -18,187 +23,135 @@ class ForensicAnalysisHud extends StatefulWidget {
 
 class _ForensicAnalysisHudState extends State<ForensicAnalysisHud>
     with SingleTickerProviderStateMixin {
-  late AnimationController _animController;
+  late AnimationController _pulse;
 
   @override
   void initState() {
     super.initState();
-    _animController = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 2),
-    )..repeat();
+    _pulse = AnimationController(vsync: this, duration: const Duration(milliseconds: 1400))
+      ..repeat(reverse: true);
   }
 
   @override
   void dispose() {
-    _animController.dispose();
+    _pulse.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
     final stages = [
-      'Scrubbing sensitive PII locally (Card, Phone, Accounts)',
-      'Auditing lexical syntax & psychological traps',
-      widget.isLocal
-          ? 'On-Device Gemini Nano Shield Execution'
-          : 'Querying Firebase AI Logic Gemini Multimodal',
-      'Synthesizing risk assessment & forensic dossier',
+      'Hiding personal details',
+      'Looking for pressure tactics',
+      widget.isLocal ? 'Analyzing on your device' : 'Analyzing with cloud AI',
+      'Preparing your result',
     ];
+    final progress = ((widget.stage - 1) / stages.length).clamp(0.0, 1.0);
 
-    return Dialog(
-      backgroundColor: Colors.transparent,
-      elevation: 0,
-      child: Container(
-        padding: const EdgeInsets.all(24),
-        constraints: const BoxConstraints(maxWidth: 420),
-        decoration: BoxDecoration(
-          color: isDark ? const Color(0xFF0F172A) : Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: const Color(0xFF3B82F6).withOpacity(0.4),
-            width: 1.5,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: const Color(0xFF2563EB).withOpacity(0.2),
-              blurRadius: 24,
-              offset: const Offset(0, 8),
-            ),
-          ],
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Glowing Radar / Shield Icon
-            RotationTransition(
-              turns: _animController,
-              child: Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: const Color(0xFF2563EB).withOpacity(0.15),
-                  border: Border.all(color: const Color(0xFF2563EB).withOpacity(0.4)),
-                ),
-                child: const Icon(
-                  Icons.security_rounded,
-                  size: 36,
-                  color: Color(0xFF3B82F6),
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              'FORENSIC ENGINE ACTIVE',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w900,
-                letterSpacing: 1.2,
-                color: Color(0xFF60A5FA),
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'Privacy-First Hybrid Triage in Progress',
-              style: TextStyle(
-                fontSize: 12,
-                color: isDark ? Colors.grey[400] : Colors.grey[600],
-              ),
-            ),
-            const SizedBox(height: 20),
-
-            // 4-Stage Checklist
-            ...stages.asMap().entries.map((entry) {
-              final idx = entry.key + 1;
-              final title = entry.value;
-              final isDone = widget.stage > idx;
-              final isCurrent = widget.stage == idx;
-
-              return Padding(
-                padding: const EdgeInsets.symmetric(vertical: 6),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 22,
-                      height: 22,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: isDone
-                            ? const Color(0xFF10B981)
-                            : isCurrent
-                                ? const Color(0xFF2563EB)
-                                : Colors.transparent,
-                        border: Border.all(
-                          color: isDone
-                              ? const Color(0xFF10B981)
-                              : isCurrent
-                                  ? const Color(0xFF3B82F6)
-                                  : (isDark ? Colors.white24 : Colors.black26),
-                        ),
-                      ),
-                      child: Center(
-                        child: isDone
-                            ? const Icon(Icons.check, size: 14, color: Colors.white)
-                            : isCurrent
-                                ? const SizedBox(
-                                    width: 12,
-                                    height: 12,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      color: Colors.white,
-                                    ),
-                                  )
-                                : Text(
-                                    '$idx',
-                                    style: TextStyle(
-                                      fontSize: 10,
-                                      color: isDark ? Colors.grey[500] : Colors.grey[400],
-                                    ),
-                                  ),
-                      ),
+    return PopScope(
+      canPop: false,
+      child: Dialog(
+        insetPadding: const EdgeInsets.symmetric(horizontal: 24),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 380),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ScaleTransition(
+                  scale: Tween(begin: 0.94, end: 1.06)
+                      .animate(CurvedAnimation(parent: _pulse, curve: Curves.easeInOut)),
+                  child: Container(
+                    width: 84,
+                    height: 84,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: AppColors.brand.withOpacity(0.15),
+                      boxShadow: [
+                        BoxShadow(
+                            color: AppColors.brand.withOpacity(0.3),
+                            blurRadius: 28,
+                            spreadRadius: 1),
+                      ],
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        title,
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: isCurrent ? FontWeight.bold : FontWeight.w500,
-                          color: isDone
-                              ? (isDark ? Colors.grey[300] : Colors.grey[800])
-                              : isCurrent
-                                  ? (isDark ? Colors.white : Colors.black)
-                                  : (isDark ? Colors.grey[600] : Colors.grey[400]),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            }),
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(
-                color: const Color(0xFF10B981).withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.lock_rounded, size: 12, color: Color(0xFF10B981)),
-                  SizedBox(width: 6),
-                  Text(
-                    'Zero-Leakage: All PII masked on-device before transmission',
-                    style: TextStyle(fontSize: 10, color: Color(0xFF10B981), fontWeight: FontWeight.w600),
+                    child: const Icon(Icons.shield_rounded, size: 42, color: AppColors.brand),
                   ),
-                ],
+                ),
+                const SizedBox(height: 20),
+                const Text('Checking for scams',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
+                const SizedBox(height: 4),
+                Text('This only takes a few seconds',
+                    style: TextStyle(fontSize: 14, color: context.mutedText)),
+                const SizedBox(height: 18),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(6),
+                  child: TweenAnimationBuilder<double>(
+                    tween: Tween(end: progress),
+                    duration: const Duration(milliseconds: 400),
+                    builder: (_, v, __) => LinearProgressIndicator(
+                      value: v,
+                      minHeight: 6,
+                      backgroundColor: context.outlineColor,
+                      valueColor: const AlwaysStoppedAnimation(AppColors.brand),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 18),
+                for (var i = 0; i < stages.length; i++)
+                  _StageRow(
+                    label: stages[i],
+                    done: widget.stage > i + 1,
+                    current: widget.stage == i + 1,
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _StageRow extends StatelessWidget {
+  final String label;
+  final bool done;
+  final bool current;
+
+  const _StageRow({required this.label, required this.done, required this.current});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 22,
+            height: 22,
+            child: done
+                ? const Icon(Icons.check_circle_rounded, color: AppColors.safe, size: 22)
+                : current
+                    ? const Padding(
+                        padding: EdgeInsets.all(2),
+                        child: CircularProgressIndicator(strokeWidth: 2.5),
+                      )
+                    : Icon(Icons.radio_button_unchecked_rounded,
+                        color: context.outlineColor, size: 22),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 14.5,
+                fontWeight: current ? FontWeight.w700 : FontWeight.w500,
+                color: done || current ? null : context.mutedText,
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
