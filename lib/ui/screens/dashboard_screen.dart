@@ -142,6 +142,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
               AppSpacing.screenH, AppSpacing.sm, AppSpacing.screenH, 32),
           children: [
             _buildHero(),
+            const SizedBox(height: AppSpacing.sm),
+            _buildOfflinePill(),
             const SizedBox(height: AppSpacing.lg),
             _buildQuickScan(),
             const SizedBox(height: AppSpacing.xl),
@@ -163,6 +165,30 @@ class _DashboardScreenState extends State<DashboardScreen> {
             _buildRecent(),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildOfflinePill() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      decoration: BoxDecoration(
+        color: AppColors.safe.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.safe.withOpacity(0.25)),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.offline_bolt_rounded, size: 16, color: AppColors.safe),
+          const SizedBox(width: 8),
+          Text(
+            _preferOnDevice
+                ? '⚡ 100% Offline Shield Active (Gemini Nano Local)'
+                : '☁️ Hybrid Cloud AI Active (Firebase Gemini Flash)',
+            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.safe),
+          ),
+        ],
       ),
     );
   }

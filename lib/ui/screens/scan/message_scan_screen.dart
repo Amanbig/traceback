@@ -108,6 +108,56 @@ class _MessageScanScreenState extends State<MessageScanScreen> {
             ),
             const SizedBox(height: AppSpacing.lg),
             const PrivacyNote(),
+            const SizedBox(height: AppSpacing.md),
+            Theme(
+              data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+              child: ExpansionTile(
+                tilePadding: EdgeInsets.zero,
+                collapsedTextColor: context.mutedText,
+                textColor: AppColors.brand,
+                iconColor: AppColors.brand,
+                collapsedIconColor: context.mutedText,
+                title: const Row(
+                  children: [
+                    Icon(Icons.biotech_outlined, size: 16),
+                    SizedBox(width: 6),
+                    Text('Judge / Evaluator Test Samples',
+                        style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600)),
+                  ],
+                ),
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4, bottom: 8),
+                    child: Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        ActionChip(
+                          avatar: const Icon(Icons.gavel_rounded, size: 14, color: AppColors.danger),
+                          label: const Text('Digital Arrest Notice', style: TextStyle(fontSize: 11)),
+                          onPressed: () {
+                            setState(() {
+                              _controller.text =
+                                  'MUMBAI POLICE & CBI NOTICE: Case #CR-9102 registered under your Aadhaar. A parcel containing 5 fake passports and narcotic drugs was seized at airport customs. Connect to official Skype video immediately for digital arrest inquiry or physical team will dispatch.';
+                            });
+                          },
+                        ),
+                        ActionChip(
+                          avatar: const Icon(Icons.bolt_rounded, size: 14, color: AppColors.warn),
+                          label: const Text('Electricity Bill Panic', style: TextStyle(fontSize: 11)),
+                          onPressed: () {
+                            setState(() {
+                              _controller.text =
+                                  'Dear Consumer, Your electricity power will be disconnected tonight at 9:30 PM from the power office because your previous month bill was not updated. Please immediately contact our electricity officer at 98123-XXXXX. Thank you.';
+                            });
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ],
         ),
       ),

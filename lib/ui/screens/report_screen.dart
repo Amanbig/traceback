@@ -350,6 +350,94 @@ ${report.safeNextSteps.map((s) => '• $s').join('\n')}
     );
   }
 
+  Widget _buildHighlightedEvidence() {
+    final text = report.maskedSnippet;
+    final triggers = [
+      'arrest', 'warrant', 'cbi', 'police', 'customs', 'narcotics',
+      'disconnect', 'tonight', 'immediately', 'urgent', 'urgency',
+      'qr', 'upi', 'pin', 'apk', 'transfer', 'deposit', 'bond',
+      'blocked', 'suspended', 'compromised', 'seized', 'passports',
+      'drugs', 'refund', 'cashback', 'kyc', 'power office'
+    ];
+
+    final pattern = RegExp('(${triggers.join('|')})', caseSensitive: false);
+    final spans = <TextSpan>[];
+
+    int lastIndex = 0;
+    for (final match in pattern.allMatches(text)) {
+      if (match.start > lastIndex) {
+        spans.add(TextSpan(
+          text: text.substring(lastIndex, match.start),
+          style: TextStyle(
+            fontSize: 13,
+            height: 1.4,
+            fontFamily: 'monospace',
+            color: context.isDark ? Colors.grey[300] : Colors.grey[800],
+          ),
+        ));
+      }
+      spans.add(TextSpan(
+        text: match.group(0),
+        style: const TextStyle(
+          fontSize: 13,
+          height: 1.4,
+          fontFamily: 'monospace',
+          fontWeight: FontWeight.bold,
+          color: AppColors.danger,
+          backgroundColor: Color(0x33EF4444),
+          decoration: TextDecoration.underline,
+          decorationColor: AppColors.danger,
+        ),
+      ));
+      lastIndex = match.end;
+    }
+    if (lastIndex < text.length) {
+      spans.add(TextSpan(
+        text: text.substring(lastIndex),
+        style: TextStyle(
+          fontSize: 13,
+          height: 1.4,
+          fontFamily: 'monospace',
+          color: context.isDark ? Colors.grey[300] : Colors.grey[800],
+        ),
+      ));
+    }
+
+    return AppCard(
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.psychology_outlined, size: 18, color: AppColors.danger),
+              const SizedBox(width: 8),
+              const Text('Deceptive Triggers in Evidence',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5)),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: AppColors.danger.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: const Text('AUTO-TAGGED',
+                    style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: AppColors.danger)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          RichText(text: TextSpan(children: spans)),
+          const SizedBox(height: 10),
+          Text(
+            'Highlighted words represent psychological coercion or urgency vectors flagged by the model.',
+            style: TextStyle(fontSize: 11, color: context.mutedText),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -438,6 +526,10 @@ ${report.safeNextSteps.map((s) => '• $s').join('\n')}
             ),
             const SizedBox(height: AppSpacing.xl),
           ],
+
+          _title('Analyzed Evidence Transcript'),
+          _buildHighlightedEvidence(),
+          const SizedBox(height: AppSpacing.xl),
 
           PiiPreviewCard(
             originalText: report.originalSnippet,

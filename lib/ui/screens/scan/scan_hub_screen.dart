@@ -11,8 +11,51 @@ import 'scan_support.dart';
 import 'screenshot_scan_screen.dart';
 
 /// The Scan tab: pick what you want to check.
-class ScanHubScreen extends StatelessWidget {
+class ScanHubScreen extends StatefulWidget {
   const ScanHubScreen({super.key});
+
+  @override
+  State<ScanHubScreen> createState() => _ScanHubScreenState();
+}
+
+class _ScanHubScreenState extends State<ScanHubScreen> with WidgetsBindingObserver {
+  String? _clipboardText;
+  bool _dismissedClipboard = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _checkClipboard();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _checkClipboard();
+    }
+  }
+
+  Future<void> _checkClipboard() async {
+    try {
+      final data = await Clipboard.getData('text/plain');
+      final text = data?.text?.trim();
+      if (text != null && text.length >= 12 && text != _clipboardText) {
+        if (mounted) {
+          setState(() {
+            _clipboardText = text;
+            _dismissedClipboard = false;
+          });
+        }
+      }
+    } catch (_) {}
+  }
 
   void _open(BuildContext context, Widget page) {
     HapticFeedback.selectionClick();
@@ -47,6 +90,66 @@ class ScanHubScreen extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(AppSpacing.screenH, 4, AppSpacing.screenH, 24),
         children: [
+          // 1. Smart Clipboard Auto-Detect Banner
+          if (_clipboardText != null && !_dismissedClipboard) ...[
+            Container(
+              margin: const EdgeInsets.only(bottom: AppSpacing.lg),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppColors.brand.withOpacity(0.12),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: AppColors.brand.withOpacity(0.35)),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: AppColors.brand.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(Icons.content_paste_rounded, color: AppColors.brand, size: 20),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('Copied text detected',
+                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                        const SizedBox(height: 2),
+                        Text(
+                          _clipboardText!,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(fontSize: 11, color: context.mutedText),
+                        ),
+                      ],
+                    ),
+                  ),
+                  FilledButton.tonal(
+                    onPressed: () {
+                      _open(context, MessageScanScreen(initialText: _clipboardText));
+                    },
+                    style: FilledButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      minimumSize: const Size(60, 36),
+                    ),
+                    child: const Text('Analyze',
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                  ),
+                  const SizedBox(width: 4),
+                  IconButton(
+                    icon: const Icon(Icons.close, size: 16),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                    onPressed: () => setState(() => _dismissedClipboard = true),
+                  ),
+                ],
+              ),
+            ),
+          ],
+
           const Text('What do you want to check?',
               style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
           const SizedBox(height: 6),
@@ -68,28 +171,48 @@ class ScanHubScreen extends StatelessWidget {
             onTap: () => _open(context, const ScreenshotScanScreen()),
           ),
           _Option(
+            icon: Icons.alt_route_rounded,
+            color: const Color(0xFF34D399),
+            title: 'Threat chain',
+            subtitle: 'Several messages that escalate over time',
+            onTap: () => _open(context, const ChainScanScreen()),
+          ),
+          _Option(
             icon: Icons.link_rounded,
-            color: const Color(0xFF22D3EE),
-            title: 'Link',
-            subtitle: 'Check a website address before opening it',
+            color: const Color(0xFF38BDF8),
+            title: 'Link or domain',
+            subtitle: 'Inspect a suspicious web address for typosquatting',
             onTap: () => _open(context, const UrlInspectorScreen()),
           ),
           _Option(
             icon: Icons.qr_code_scanner_rounded,
             color: const Color(0xFFFBBF24),
-            title: 'UPI QR code',
-            subtitle: 'Find payment traps before you scan to pay',
+            title: 'QR or UPI code',
+            subtitle: 'Check for "scan to receive" and hidden debits',
             onTap: () => _open(context, const QrInspectorScreen()),
           ),
-          _Option(
-            icon: Icons.timeline_rounded,
-            color: const Color(0xFF818CF8),
-            title: 'Message chain',
-            subtitle: 'Several messages from the same sender',
-            onTap: () => _open(context, const ChainScanScreen()),
+          const SizedBox(height: AppSpacing.lg),
+
+          // Offline Capable Badge
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              color: AppColors.safe.withOpacity(0.08),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.safe.withOpacity(0.2)),
+            ),
+            child: const Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.offline_bolt_rounded, size: 16, color: AppColors.safe),
+                SizedBox(width: 8),
+                Text(
+                  '100% Offline Capable • On-Device Gemini Nano Shield',
+                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.safe),
+                ),
+              ],
+            ),
           ),
-          const SizedBox(height: AppSpacing.sm),
-          const PrivacyNote(),
         ],
       ),
     );
