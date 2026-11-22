@@ -158,6 +158,14 @@ jobs:
           name: traceback-web
           path: traceback-web.zip
 
+      - name: Deploy to Firebase Hosting
+        if: env.FIREBASE_TOKEN != ''
+        env:
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+        run: |
+          echo "Deploying release web build to Firebase Hosting (gem-app-2adf0)..."
+          npx firebase-tools deploy --only hosting --project gem-app-2adf0 --token "$FIREBASE_TOKEN"
+
   # -------------------------------------------------------------
   # Job 4: Create GitHub Release with All Artifacts
   # -------------------------------------------------------------
