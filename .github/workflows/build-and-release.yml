@@ -34,6 +34,19 @@ jobs:
       - name: Install Dependencies
         run: flutter pub get
 
+      - name: Validate Tag Matches App Version
+        run: |
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          APP_VERSION=$(grep '^version:' pubspec.yaml | sed -E 's/version: *([0-9]+\.[0-9]+\.[0-9]+).*/\1/')
+          echo "Git Tag Version: $TAG_VERSION"
+          echo "App Version (pubspec.yaml): $APP_VERSION"
+          if [ "$TAG_VERSION" != "$APP_VERSION" ]; then
+            echo "::error::Tag version ($TAG_VERSION) does not match app version in pubspec.yaml ($APP_VERSION)!"
+            echo "Please update the 'version:' field in pubspec.yaml to match the release tag."
+            exit 1
+          fi
+          echo "✓ Git tag matches pubspec.yaml version successfully ($TAG_VERSION)."
+
       - name: Decode Android Keystore (If Secrets Present)
         run: |
           if [ -n "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" ]; then
@@ -50,10 +63,10 @@ jobs:
           fi
 
       - name: Build Android APK
-        run: flutter build apk --release
+        run: flutter build apk --release --build-name="${GITHUB_REF_NAME#v}" --build-number="${{ github.run_number }}"
 
       - name: Build Android App Bundle (AAB)
-        run: flutter build appbundle --release
+        run: flutter build appbundle --release --build-name="${GITHUB_REF_NAME#v}" --build-number="${{ github.run_number }}"
 
       - name: Upload Android APK Artifact
         uses: actions/upload-artifact@v4
@@ -87,7 +100,7 @@ jobs:
         run: flutter pub get
 
       - name: Build iOS (No Codesign)
-        run: flutter build ios --release --no-codesign
+        run: flutter build ios --release --no-codesign --build-name="${GITHUB_REF_NAME#v}" --build-number="${{ github.run_number }}"
 
       - name: Package iOS App Archive
         run: |
