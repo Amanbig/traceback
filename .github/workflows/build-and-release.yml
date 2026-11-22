@@ -162,41 +162,25 @@ jobs:
     name: Publish GitHub Release
     needs: [build-android, build-ios, build-web]
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Download Android APK
+      - name: Download All Release Artifacts
         uses: actions/download-artifact@v4
         with:
-          name: traceback-android-apk
-          path: release-artifacts/
+          path: release-artifacts
+          merge-multiple: true
 
-      - name: Download Android AAB
-        uses: actions/download-artifact@v4
-        with:
-          name: traceback-android-aab
-          path: release-artifacts/
-
-      - name: Download iOS Archive
-        uses: actions/download-artifact@v4
-        with:
-          name: traceback-ios
-          path: release-artifacts/
-
-      - name: Download Web Archive
-        uses: actions/download-artifact@v4
-        with:
-          name: traceback-web
-          path: release-artifacts/
-
-      - name: Rename Artifacts for Distribution
+      - name: Prepare Artifacts for Distribution
         run: |
           cd release-artifacts
-          mv app-release.apk traceback-${{ github.ref_name }}-android.apk || true
-          mv app-release.aab traceback-${{ github.ref_name }}-android.aab || true
-          mv traceback-ios-unsigned.zip traceback-${{ github.ref_name }}-ios.zip || true
-          mv traceback-web.zip traceback-${{ github.ref_name }}-web.zip || true
+          [ -f app-release.apk ] && mv app-release.apk traceback-${{ github.ref_name }}-android.apk
+          [ -f app-release.aab ] && mv app-release.aab traceback-${{ github.ref_name }}-android.aab
+          [ -f traceback-ios-unsigned.zip ] && mv traceback-ios-unsigned.zip traceback-${{ github.ref_name }}-ios.zip
+          [ -f traceback-web.zip ] && mv traceback-web.zip traceback-${{ github.ref_name }}-web.zip
           ls -la
 
       - name: Extract Release Notes
@@ -215,11 +199,11 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
+          name: Traceback ${{ github.ref_name }}
+          tag_name: ${{ github.ref_name }}
           body_path: ${{ steps.notes.outputs.path }}
-          files: |
-            release-artifacts/traceback-${{ github.ref_name }}-android.apk
-            release-artifacts/traceback-${{ github.ref_name }}-android.aab
-            release-artifacts/traceback-${{ github.ref_name }}-ios.zip
-            release-artifacts/traceback-${{ github.ref_name }}-web.zip
+          files: release-artifacts/*
           draft: false
           prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
