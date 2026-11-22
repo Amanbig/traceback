@@ -25,6 +25,27 @@ class _ReportScreenState extends State<ReportScreen> {
 
   ThreatReport get report => widget.report;
 
+  Future<void> _exportPdf() async {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Generating official forensic dossier PDF...'),
+        duration: Duration(seconds: 2),
+      ),
+    );
+    try {
+      await PdfDossierService.exportReportDossier(report);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error generating PDF: $e'),
+            backgroundColor: AppColors.danger,
+          ),
+        );
+      }
+    }
+  }
+
   void _showFlagDetails(BuildContext context, String flag) {
     showModalBottomSheet(
       context: context,
@@ -597,7 +618,7 @@ ${report.safeNextSteps.map((s) => '• $s').join('\n')}
                 Expanded(
                   flex: 3,
                   child: FilledButton.icon(
-                    onPressed: () => PdfDossierService.exportReportDossier(report),
+                    onPressed: _exportPdf,
                     icon: const Icon(Icons.picture_as_pdf_rounded, size: 20),
                     label: const Text('Export PDF'),
                   ),

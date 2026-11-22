@@ -7,9 +7,29 @@ import 'package:printing/printing.dart';
 import '../models/threat_report.dart';
 
 class PdfDossierService {
+  static String _sanitize(String text) {
+    return text
+        .replaceAll('•', '-')
+        .replaceAll('₹', 'Rs. ')
+        .replaceAll('—', '--')
+        .replaceAll('–', '-')
+        .replaceAll('“', '"')
+        .replaceAll('”', '"')
+        .replaceAll('’', "'")
+        .replaceAll('‘', "'")
+        .replaceAll('…', '...');
+  }
+
   /// Generates and initiates printing / downloading of the Forensic Dossier PDF
   static Future<void> exportReportDossier(ThreatReport report) async {
-    final pdf = pw.Document();
+    pw.ThemeData? theme;
+    try {
+      final regular = await PdfGoogleFonts.notoSansRegular();
+      final bold = await PdfGoogleFonts.notoSansBold();
+      theme = pw.ThemeData.withFont(base: regular, bold: bold);
+    } catch (_) {}
+
+    final pdf = theme != null ? pw.Document(theme: theme) : pw.Document();
 
     final dateFormat = DateFormat('yyyy-MM-dd HH:mm:ss UTC');
     final formattedDate = dateFormat.format(report.createdAt.toUtc());
@@ -136,7 +156,7 @@ class PdfDossierService {
                 borderRadius: pw.BorderRadius.all(pw.Radius.circular(4)),
               ),
               child: pw.Text(
-                report.summary,
+                _sanitize(report.summary),
                 style: const pw.TextStyle(fontSize: 9, lineSpacing: 1.3),
               ),
             ),
@@ -166,7 +186,7 @@ class PdfDossierService {
                 borderRadius: const pw.BorderRadius.all(pw.Radius.circular(4)),
               ),
               child: pw.Text(
-                report.maskedSnippet,
+                _sanitize(report.maskedSnippet),
                 style: pw.TextStyle(
                   fontSize: 8.5,
                   font: pw.Font.courier(),
@@ -198,7 +218,7 @@ class PdfDossierService {
                       ),
                       pw.Expanded(
                         child: pw.Text(
-                          flag,
+                          _sanitize(flag),
                           style: const pw.TextStyle(fontSize: 8.5, lineSpacing: 1.2),
                         ),
                       ),
@@ -229,7 +249,7 @@ class PdfDossierService {
                       ),
                       pw.Expanded(
                         child: pw.Text(
-                          step,
+                          _sanitize(step),
                           style: const pw.TextStyle(fontSize: 8.5, lineSpacing: 1.2),
                         ),
                       ),
@@ -255,9 +275,9 @@ class PdfDossierService {
                   pw.SizedBox(height: 4),
                   pw.Text(
                     'This document serves as technical evidence of an attempted or executed cyber fraud incident for submission to:\n'
-                    '• National Cyber Crime Reporting Portal (Dial 1930 / https://cybercrime.gov.in)\n'
-                    '• Bank Fraud Dispute & Chargeback Department (Under RBI/Regulatory Zero-Liability Policy)\n'
-                    '• Local Cyber Crime Police Station for First Information Report (FIR) registration.',
+                    '- National Cyber Crime Reporting Portal (Dial 1930 / https://cybercrime.gov.in)\n'
+                    '- Bank Fraud Dispute & Chargeback Department (Under RBI/Regulatory Zero-Liability Policy)\n'
+                    '- Local Cyber Crime Police Station for First Information Report (FIR) registration.',
                     style: const pw.TextStyle(fontSize: 7.5, color: PdfColors.grey800, lineSpacing: 1.2),
                   ),
                   pw.SizedBox(height: 10),
@@ -287,11 +307,19 @@ class PdfDossierService {
       ),
     );
 
-    // Launch print / download dialog
-    await Printing.layoutPdf(
-      onLayout: (PdfPageFormat format) async => pdf.save(),
-      name: 'Traceback_Forensic_Dossier_$dossierId.pdf',
-    );
+    // Launch print / download dialog (sharePdf downloads on Web & shares on Mobile)
+    final pdfBytes = await pdf.save();
+    try {
+      await Printing.sharePdf(
+        bytes: pdfBytes,
+        filename: 'Traceback_Forensic_Dossier_$dossierId.pdf',
+      );
+    } catch (_) {
+      await Printing.layoutPdf(
+        onLayout: (PdfPageFormat format) async => pdfBytes,
+        name: 'Traceback_Forensic_Dossier_$dossierId.pdf',
+      );
+    }
   }
 
   static pw.Widget _buildMetaRow(String label, String value) {
