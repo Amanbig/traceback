@@ -14,6 +14,13 @@ class ScamRadarScreen extends StatefulWidget {
 
 class _ScamRadarScreenState extends State<ScamRadarScreen> {
   String _selectedCategory = 'All';
+  final TextEditingController _searchController = TextEditingController();
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
   void _showReportDialog(BuildContext context) {
     final titleController = TextEditingController();
@@ -149,12 +156,52 @@ class _ScamRadarScreenState extends State<ScamRadarScreen> {
         stream: FirebaseService.streamCommunityScams(),
         builder: (context, snapshot) {
           final allScams = snapshot.data ?? ScamRadarItem.trendingScams;
-          final filtered = _selectedCategory == 'All'
-              ? allScams
-              : allScams.where((s) => s.category == _selectedCategory).toList();
+          final query = _searchController.text.toLowerCase().trim();
+          final filtered = allScams.where((s) {
+            final matchesCat = _selectedCategory == 'All' || s.category == _selectedCategory;
+            final matchesQuery = query.isEmpty ||
+                s.title.toLowerCase().contains(query) ||
+                s.sampleText.toLowerCase().contains(query) ||
+                s.modusOperandi.toLowerCase().contains(query);
+            return matchesCat && matchesQuery;
+          }).toList();
 
           return Column(
             children: [
+              // Search Bar
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 10, 16, 4),
+                child: TextField(
+                  controller: _searchController,
+                  onChanged: (val) => setState(() {}),
+                  decoration: InputDecoration(
+                    hintText: 'Search scams (e.g. FedEx, Electricity, Skype)...',
+                    hintStyle: TextStyle(
+                      fontSize: 13,
+                      color: isDark ? Colors.grey[500] : Colors.grey[400],
+                    ),
+                    prefixIcon: const Icon(Icons.search, size: 20),
+                    suffixIcon: _searchController.text.isNotEmpty
+                        ? IconButton(
+                            icon: const Icon(Icons.clear, size: 16),
+                            onPressed: () => setState(() => _searchController.clear()),
+                          )
+                        : null,
+                    filled: true,
+                    fillColor: isDark ? const Color(0xFF1E293B) : Colors.white,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: isDark ? Colors.white10 : Colors.black12),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: isDark ? Colors.white10 : Colors.black12),
+                    ),
+                  ),
+                ),
+              ),
+
               // Filter Chips
               SingleChildScrollView(
                 scrollDirection: Axis.horizontal,

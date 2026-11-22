@@ -552,6 +552,57 @@ ${report.safeNextSteps.map((s) => '• $s').join('\n')}
           ],
         ),
       ),
+      bottomNavigationBar: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF0F172A) : Colors.white,
+          border: Border(top: BorderSide(color: isDark ? Colors.white10 : Colors.black12)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.08),
+              blurRadius: 8,
+              offset: const Offset(0, -2),
+            ),
+          ],
+        ),
+        child: SafeArea(
+          child: Row(
+            children: [
+              Expanded(
+                flex: 3,
+                child: FilledButton.icon(
+                  onPressed: () => PdfDossierService.exportReportDossier(report),
+                  icon: const Icon(Icons.picture_as_pdf_rounded, size: 18),
+                  label: const Text('Export PDF Dossier',
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: const Color(0xFF2563EB),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+              ),
+              if (report.riskScore >= 40) ...[
+                const SizedBox(width: 10),
+                Expanded(
+                  flex: 2,
+                  child: OutlinedButton.icon(
+                    onPressed: () => _reportToRadar(context),
+                    icon: const Icon(Icons.add_alert_rounded, size: 16, color: Colors.amber),
+                    label: const Text('Radar Alert',
+                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
     );
   }
 

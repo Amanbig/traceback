@@ -5,6 +5,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../services/investigation_service.dart';
 import '../../services/history_service.dart';
 import '../../services/firebase_service.dart';
+import '../../models/threat_report.dart';
+import '../widgets/forensic_analysis_hud.dart';
 import 'report_screen.dart';
 import 'settings_screen.dart';
 
@@ -37,7 +39,6 @@ class _InvestigateScreenState extends State<InvestigateScreen> {
 
   bool _preferOnDevice = true;
   bool _isAnalyzing = false;
-  String _analysisStatus = '';
 
   @override
   void initState() {
@@ -114,124 +115,27 @@ class _InvestigateScreenState extends State<InvestigateScreen> {
   }
 
   Future<void> _runInvestigation() async {
-    if (_selectedInputMode == 2) {
-      if (_chainMessages.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Please add at least 1 message to the threat chain.'),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-        return;
-      }
-
-      setState(() {
-        _isAnalyzing = true;
-        _analysisStatus = '1. Correlating timeline and masking PII across messages...';
-      });
-
-      await Future.delayed(const Duration(milliseconds: 300));
-      if (!mounted) return;
-
-      setState(() {
-        _analysisStatus = _preferOnDevice
-            ? '2. Running On-Device Gemini Nano timeline analysis...'
-            : '2. Running Cloud AI Threat Chain Correlation via Firebase...';
-      });
-
-      try {
-        final report = await _investigationService.investigateMessageChain(
-          messages: _chainMessages,
-          forceLocalOnly: _preferOnDevice,
-        );
-
-        await HistoryService.saveReport(report);
-        await FirebaseService.syncInvestigationToCloud(report);
-
-        if (!mounted) return;
-        setState(() {
-          _isAnalyzing = false;
-          _analysisStatus = '';
-        });
-
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => ReportScreen(report: report)),
-        );
-      } catch (e) {
-        if (!mounted) return;
-        setState(() {
-          _isAnalyzing = false;
-          _analysisStatus = '';
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Investigation error: $e'), backgroundColor: Colors.redAccent),
-        );
-      }
+    if (_selectedInputMode == 2 && _chainMessages.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please add at least 1 message to the threat chain.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
       return;
     }
 
-    if (_selectedInputMode == 1) {
-      if (_selectedImageBytes == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Please select or capture a screenshot to investigate.'),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-        return;
-      }
-
-      setState(() {
-        _isAnalyzing = true;
-        _analysisStatus = '1. Preprocessing image and masking sensitive visual regions...';
-      });
-
-      await Future.delayed(const Duration(milliseconds: 300));
-      if (!mounted) return;
-
-      setState(() {
-        _analysisStatus = _preferOnDevice
-            ? '2. Running On-Device Gemini Nano visual triage...'
-            : '2. Querying Firebase AI Logic Gemini Multimodal...';
-      });
-
-      try {
-        final report = await _investigationService.investigateImage(
-          imageBytes: _selectedImageBytes!,
-          mimeType: _selectedImageMime ?? 'image/jpeg',
-          optionalContext: _controller.text.trim().isEmpty ? null : _controller.text.trim(),
-          forceLocalOnly: _preferOnDevice,
-        );
-
-        await HistoryService.saveReport(report);
-        await FirebaseService.syncInvestigationToCloud(report);
-
-        if (!mounted) return;
-        setState(() {
-          _isAnalyzing = false;
-          _analysisStatus = '';
-        });
-
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => ReportScreen(report: report)),
-        );
-      } catch (e) {
-        if (!mounted) return;
-        setState(() {
-          _isAnalyzing = false;
-          _analysisStatus = '';
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Investigation error: $e'), backgroundColor: Colors.redAccent),
-        );
-      }
+    if (_selectedInputMode == 1 && _selectedImageBytes == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please select or capture a screenshot to investigate.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
       return;
     }
 
-    final text = _controller.text.trim();
-    if (text.isEmpty) {
+    if (_selectedInputMode == 0 && _controller.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Please enter or paste a suspicious message to investigate.'),
@@ -241,48 +145,72 @@ class _InvestigateScreenState extends State<InvestigateScreen> {
       return;
     }
 
-    setState(() {
-      _isAnalyzing = true;
-      _analysisStatus = '1. Scrubbing sensitive PII locally on device...';
-    });
+    setState(() => _isAnalyzing = true);
+    final stageNotifier = ValueNotifier<int>(1);
 
-    await Future.delayed(const Duration(milliseconds: 300));
-    if (!mounted) return;
-
-    setState(() {
-      _analysisStatus = _preferOnDevice
-          ? '2. Running On-Device Gemini Nano Shield & Lexical Audit...'
-          : '2. Querying Firebase AI Logic Cloud Investigator...';
-    });
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => ValueListenableBuilder<int>(
+        valueListenable: stageNotifier,
+        builder: (ctx, stage, _) => ForensicAnalysisHud(
+          stage: stage,
+          isLocal: _preferOnDevice,
+          currentDetail: '',
+        ),
+      ),
+    );
 
     try {
-      final report = await _investigationService.investigate(
-        text: text,
-        forceLocalOnly: _preferOnDevice,
-      );
+      await Future.delayed(const Duration(milliseconds: 350));
+      stageNotifier.value = 2; // Tokenizing & syntax audit
 
+      await Future.delayed(const Duration(milliseconds: 300));
+      stageNotifier.value = 3; // Hybrid AI inference
+
+      final ThreatReport report;
+      if (_selectedInputMode == 2) {
+        report = await _investigationService.investigateMessageChain(
+          messages: _chainMessages,
+          forceLocalOnly: _preferOnDevice,
+        );
+      } else if (_selectedInputMode == 1) {
+        report = await _investigationService.investigateImage(
+          imageBytes: _selectedImageBytes!,
+          mimeType: _selectedImageMime ?? 'image/jpeg',
+          optionalContext: _controller.text.trim().isEmpty ? null : _controller.text.trim(),
+          forceLocalOnly: _preferOnDevice,
+        );
+      } else {
+        report = await _investigationService.investigate(
+          text: _controller.text.trim(),
+          forceLocalOnly: _preferOnDevice,
+        );
+      }
+
+      stageNotifier.value = 4; // Synthesizing report
       await HistoryService.saveReport(report);
       await FirebaseService.syncInvestigationToCloud(report);
+      await Future.delayed(const Duration(milliseconds: 250));
 
       if (!mounted) return;
-      setState(() {
-        _isAnalyzing = false;
-        _analysisStatus = '';
-      });
+      Navigator.of(context, rootNavigator: true).pop(); // Dismiss HUD
 
       Navigator.push(
         context,
         MaterialPageRoute(builder: (context) => ReportScreen(report: report)),
       );
     } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _isAnalyzing = false;
-        _analysisStatus = '';
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Investigation error: $e'), backgroundColor: Colors.redAccent),
-      );
+      if (mounted) {
+        Navigator.of(context, rootNavigator: true).pop(); // Dismiss HUD
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Investigation error: $e'), backgroundColor: Colors.redAccent),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isAnalyzing = false);
+      }
     }
   }
 
@@ -635,28 +563,20 @@ class _InvestigateScreenState extends State<InvestigateScreen> {
                   backgroundColor: const Color(0xFF2563EB),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                 ),
-                icon: _isAnalyzing
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                      )
-                    : Icon(
-                        _selectedInputMode == 2
-                            ? Icons.timeline_rounded
-                            : _selectedInputMode == 1
-                                ? Icons.document_scanner
-                                : Icons.manage_search_rounded,
-                        size: 22,
-                      ),
+                icon: Icon(
+                  _selectedInputMode == 2
+                      ? Icons.timeline_rounded
+                      : _selectedInputMode == 1
+                          ? Icons.document_scanner
+                          : Icons.manage_search_rounded,
+                  size: 22,
+                ),
                 label: Text(
-                  _isAnalyzing
-                      ? _analysisStatus
-                      : (_selectedInputMode == 2
-                          ? 'Correlate Threat Chain (${_chainMessages.length} msgs)'
-                          : _selectedInputMode == 1
-                              ? 'Investigate Screenshot'
-                              : 'Execute Forensic Audit'),
+                  _selectedInputMode == 2
+                      ? 'Correlate Threat Chain (${_chainMessages.length} msgs)'
+                      : _selectedInputMode == 1
+                          ? 'Investigate Screenshot Evidence'
+                          : 'Execute Forensic Audit',
                   style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
                 ),
               ),
