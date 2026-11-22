@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../models/scam_radar_item.dart';
 import '../../services/firebase_service.dart';
+import 'scam_simulator_screen.dart';
 
 class ScamRadarScreen extends StatefulWidget {
   final Function(String)? onSelectSample;
@@ -126,6 +127,18 @@ class _ScamRadarScreenState extends State<ScamRadarScreen> {
             Text('Community Scam Radar', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
           ],
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.sports_esports_outlined),
+            tooltip: 'Cyber Defender Simulator',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const ScamSimulatorScreen()),
+              );
+            },
+          ),
+        ],
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showReportDialog(context),

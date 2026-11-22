@@ -5,14 +5,24 @@ import '../../models/threat_report.dart';
 import '../../models/scam_radar_item.dart';
 import '../../services/firebase_service.dart';
 import '../../services/pdf_dossier_service.dart';
+import '../../services/vernacular_translation_service.dart';
 import '../widgets/threat_gauge.dart';
 import '../widgets/hybrid_badge.dart';
 import '../widgets/pii_preview_card.dart';
 
-class ReportScreen extends StatelessWidget {
+class ReportScreen extends StatefulWidget {
   final ThreatReport report;
 
   const ReportScreen({super.key, required this.report});
+
+  @override
+  State<ReportScreen> createState() => _ReportScreenState();
+}
+
+class _ReportScreenState extends State<ReportScreen> {
+  String _selectedLanguage = 'en'; // 'en' or 'hi'
+
+  ThreatReport get report => widget.report;
 
   void _showFlagDetails(BuildContext context, String flag) {
     showModalBottomSheet(
@@ -162,6 +172,24 @@ ${report.safeNextSteps.map((s) => '• $s').join('\n')}
                   HybridBadge(isLocal: report.isLocalInference),
                   const SizedBox(height: 16),
                   ThreatGauge(score: report.riskScore, level: report.threatLevel),
+                  const SizedBox(height: 16),
+
+                  // Language Switcher
+                  Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF1E293B) : const Color(0xFFE2E8F0),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _buildLangChip('en', '🇬🇧 English', isDark),
+                        const SizedBox(width: 4),
+                        _buildLangChip('hi', '🇮🇳 हिंदी / Hinglish', isDark),
+                      ],
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -297,7 +325,7 @@ ${report.safeNextSteps.map((s) => '• $s').join('\n')}
 
             // Investigation Summary
             Text(
-              'Investigation Verdict',
+              _selectedLanguage == 'hi' ? 'जांच निष्कर्ष (Verdict)' : 'Investigation Verdict',
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w700,
@@ -306,6 +334,7 @@ ${report.safeNextSteps.map((s) => '• $s').join('\n')}
             ),
             const SizedBox(height: 8),
             Container(
+              width: double.infinity,
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: isDark ? const Color(0xFF1E293B) : Colors.white,
@@ -313,7 +342,10 @@ ${report.safeNextSteps.map((s) => '• $s').join('\n')}
                 border: Border.all(color: isDark ? Colors.white10 : Colors.black12),
               ),
               child: Text(
-                report.summary,
+                _selectedLanguage == 'hi'
+                    ? VernacularTranslationService.getHindiSummary(
+                        report.summary, report.threatLevel.name, report.riskScore)
+                    : report.summary,
                 style: TextStyle(
                   fontSize: 14,
                   height: 1.5,
@@ -426,7 +458,7 @@ ${report.safeNextSteps.map((s) => '• $s').join('\n')}
 
             // Actionable Next Steps
             Text(
-              'Safe Next Steps Checklist',
+              _selectedLanguage == 'hi' ? 'सुरक्षा और बचाव के आवश्यक कदम' : 'Safe Next Steps Checklist',
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w700,
@@ -442,7 +474,10 @@ ${report.safeNextSteps.map((s) => '• $s').join('\n')}
                 border: Border.all(color: const Color(0xFF10B981).withOpacity(0.3)),
               ),
               child: Column(
-                children: report.safeNextSteps.map((step) {
+                children: (_selectedLanguage == 'hi'
+                        ? VernacularTranslationService.getHindiNextSteps()
+                        : report.safeNextSteps)
+                    .map((step) {
                   return Padding(
                     padding: const EdgeInsets.symmetric(vertical: 4),
                     child: Row(
@@ -633,6 +668,42 @@ ${report.safeNextSteps.map((s) => '• $s').join('\n')}
           },
         );
       },
+    );
+  }
+
+  Widget _buildLangChip(String code, String label, bool isDark) {
+    final isSelected = _selectedLanguage == code;
+    return InkWell(
+      onTap: () => setState(() => _selectedLanguage = code),
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? (isDark ? const Color(0xFF334155) : Colors.white)
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.08),
+                    blurRadius: 4,
+                    offset: const Offset(0, 1),
+                  )
+                ]
+              : null,
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+            color: isSelected
+                ? (isDark ? Colors.white : Colors.black87)
+                : Colors.grey,
+          ),
+        ),
+      ),
     );
   }
 }

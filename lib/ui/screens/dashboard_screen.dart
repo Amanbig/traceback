@@ -8,7 +8,9 @@ import '../../models/scam_radar_item.dart';
 import '../widgets/auth_dialog.dart';
 import 'investigate_screen.dart';
 import 'url_inspector_screen.dart';
+import 'qr_inspector_screen.dart';
 import 'emergency_toolkit_screen.dart';
+import 'scam_simulator_screen.dart';
 import 'settings_screen.dart';
 import 'report_screen.dart';
 
@@ -437,6 +439,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     },
                   ),
                   _buildToolTile(
+                    icon: Icons.qr_code_scanner_rounded,
+                    title: 'UPI QR Exploit',
+                    subtitle: 'Scan-to-receive trap audit',
+                    color: Colors.amber,
+                    isDark: isDark,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const QrInspectorScreen()),
+                      );
+                    },
+                  ),
+                  _buildToolTile(
                     icon: Icons.timeline_rounded,
                     title: 'Threat Chain',
                     subtitle: 'Multi-message correlation',
@@ -454,6 +469,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       Navigator.push(
                         context,
                         MaterialPageRoute(builder: (context) => const EmergencyToolkitScreen()),
+                      );
+                    },
+                  ),
+                  _buildToolTile(
+                    icon: Icons.sports_esports_outlined,
+                    title: 'Scam Simulator',
+                    subtitle: 'Interactive defense arena',
+                    color: Colors.tealAccent,
+                    isDark: isDark,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const ScamSimulatorScreen()),
                       );
                     },
                   ),
