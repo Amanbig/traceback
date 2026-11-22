@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../../models/threat_report.dart';
 import '../../models/scam_radar_item.dart';
 import '../../services/firebase_service.dart';
+import '../../services/pdf_dossier_service.dart';
 import '../widgets/threat_gauge.dart';
 import '../widgets/hybrid_badge.dart';
 import '../widgets/pii_preview_card.dart';
@@ -114,6 +115,11 @@ class ReportScreen extends StatelessWidget {
           style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18),
         ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.picture_as_pdf_outlined),
+            tooltip: 'Export PDF Dossier',
+            onPressed: () => PdfDossierService.exportReportDossier(report),
+          ),
           IconButton(
             icon: const Icon(Icons.share_outlined),
             tooltip: 'Copy Threat Summary',
@@ -468,6 +474,23 @@ ${report.safeNextSteps.map((s) => '• $s').join('\n')}
               maskedText: report.maskedSnippet,
             ),
             const SizedBox(height: 20),
+
+            // Official PDF Export Button
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                onPressed: () => PdfDossierService.exportReportDossier(report),
+                icon: const Icon(Icons.picture_as_pdf_rounded, size: 18),
+                label: const Text('Export Official PDF Forensic Dossier'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFF1E293B),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
 
             // Community Contribution Button
             if (report.riskScore >= 40) ...[
