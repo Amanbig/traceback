@@ -138,6 +138,51 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ]),
           const SizedBox(height: AppSpacing.xl),
+          _group('Appearance', [
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Theme Mode', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
+                  const SizedBox(height: 4),
+                  Text('Choose between cyber dark, crisp light, or system synchronization.',
+                      style: TextStyle(fontSize: 13, color: context.mutedText)),
+                  const SizedBox(height: 14),
+                  SizedBox(
+                    width: double.infinity,
+                    child: SegmentedButton<ThemeMode>(
+                      showSelectedIcon: false,
+                      segments: const [
+                        ButtonSegment(
+                          value: ThemeMode.dark,
+                          icon: Icon(Icons.dark_mode_rounded, size: 16),
+                          label: Text('Dark'),
+                        ),
+                        ButtonSegment(
+                          value: ThemeMode.light,
+                          icon: Icon(Icons.light_mode_rounded, size: 16),
+                          label: Text('Light'),
+                        ),
+                        ButtonSegment(
+                          value: ThemeMode.system,
+                          icon: Icon(Icons.settings_suggest_rounded, size: 16),
+                          label: Text('System'),
+                        ),
+                      ],
+                      selected: {ThemeController.mode.value},
+                      onSelectionChanged: (selected) {
+                        setState(() {
+                          ThemeController.setTheme(selected.first);
+                        });
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ]),
+          const SizedBox(height: AppSpacing.xl),
           _group('Account', [_buildAccount()]),
           const SizedBox(height: AppSpacing.xl),
           _group('About', [

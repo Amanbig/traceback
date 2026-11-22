@@ -1,0 +1,205 @@
+name: Build & Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  # -------------------------------------------------------------
+  # Job 1: Build Android Release (APK & AAB)
+  # -------------------------------------------------------------
+  build-android:
+    name: Build Android Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Install Dependencies
+        run: flutter pub get
+
+      - name: Decode Android Keystore (If Secrets Present)
+        run: |
+          if [ -n "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" ]; then
+            echo "Decoding release keystore..."
+            echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode > android/app/traceback-release.jks
+            cat <<EOF > android/key.properties
+          storePassword=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          keyPassword=${{ secrets.ANDROID_KEY_PASSWORD }}
+          keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}
+          storeFile=traceback-release.jks
+          EOF
+          else
+            echo "No keystore secret provided. Building with default signing."
+          fi
+
+      - name: Build Android APK
+        run: flutter build apk --release
+
+      - name: Build Android App Bundle (AAB)
+        run: flutter build appbundle --release
+
+      - name: Upload Android APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: traceback-android-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
+
+      - name: Upload Android AAB Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: traceback-android-aab
+          path: build/app/outputs/bundle/release/app-release.aab
+
+  # -------------------------------------------------------------
+  # Job 2: Build iOS Bundle (macOS Runner, Unsigned / Release)
+  # -------------------------------------------------------------
+  build-ios:
+    name: Build iOS Bundle
+    runs-on: macos-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Install Dependencies
+        run: flutter pub get
+
+      - name: Build iOS (No Codesign)
+        run: flutter build ios --release --no-codesign
+
+      - name: Package iOS App Archive
+        run: |
+          cd build/ios/iphoneos
+          zip -r ../../../traceback-ios-unsigned.zip Runner.app
+          cd ../../..
+
+      - name: Upload iOS Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: traceback-ios
+          path: traceback-ios-unsigned.zip
+
+  # -------------------------------------------------------------
+  # Job 3: Build Web Release
+  # -------------------------------------------------------------
+  build-web:
+    name: Build Web Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Install Dependencies
+        run: flutter pub get
+
+      - name: Build Web Release
+        run: flutter build web --release
+
+      - name: Package Web Archive
+        run: |
+          cd build/web
+          zip -r ../../traceback-web.zip .
+          cd ../..
+
+      - name: Upload Web Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: traceback-web
+          path: traceback-web.zip
+
+  # -------------------------------------------------------------
+  # Job 4: Create GitHub Release with All Artifacts
+  # -------------------------------------------------------------
+  release:
+    name: Publish GitHub Release
+    needs: [build-android, build-ios, build-web]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Download Android APK
+        uses: actions/download-artifact@v4
+        with:
+          name: traceback-android-apk
+          path: release-artifacts/
+
+      - name: Download Android AAB
+        uses: actions/download-artifact@v4
+        with:
+          name: traceback-android-aab
+          path: release-artifacts/
+
+      - name: Download iOS Archive
+        uses: actions/download-artifact@v4
+        with:
+          name: traceback-ios
+          path: release-artifacts/
+
+      - name: Download Web Archive
+        uses: actions/download-artifact@v4
+        with:
+          name: traceback-web
+          path: release-artifacts/
+
+      - name: Rename Artifacts for Distribution
+        run: |
+          cd release-artifacts
+          mv app-release.apk traceback-${{ github.ref_name }}-android.apk || true
+          mv app-release.aab traceback-${{ github.ref_name }}-android.aab || true
+          mv traceback-ios-unsigned.zip traceback-${{ github.ref_name }}-ios.zip || true
+          mv traceback-web.zip traceback-${{ github.ref_name }}-web.zip || true
+          ls -la
+
+      - name: Extract Release Notes
+        id: notes
+        run: |
+          TAG="${{ github.ref_name }}"
+          NOTE_FILE="release_notes/${TAG}.md"
+          if [ -f "$NOTE_FILE" ]; then
+            echo "Found matching release note: $NOTE_FILE"
+            echo "path=$NOTE_FILE" >> $GITHUB_OUTPUT
+          else
+            echo "No specific file found; using main RELEASE_NOTES.md"
+            echo "path=RELEASE_NOTES.md" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          body_path: ${{ steps.notes.outputs.path }}
+          files: |
+            release-artifacts/traceback-${{ github.ref_name }}-android.apk
+            release-artifacts/traceback-${{ github.ref_name }}-android.aab
+            release-artifacts/traceback-${{ github.ref_name }}-ios.zip
+            release-artifacts/traceback-${{ github.ref_name }}-web.zip
+          draft: false
+          prerelease: false

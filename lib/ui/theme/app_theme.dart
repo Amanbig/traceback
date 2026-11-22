@@ -1,7 +1,42 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../models/threat_report.dart';
+
+/// Global theme mode controller and state persistence
+class ThemeController {
+  static final ValueNotifier<ThemeMode> mode = ValueNotifier<ThemeMode>(ThemeMode.dark);
+
+  static Future<void> loadTheme() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final saved = prefs.getString('setting_theme_mode');
+      if (saved == 'light') {
+        mode.value = ThemeMode.light;
+      } else if (saved == 'dark') {
+        mode.value = ThemeMode.dark;
+      } else if (saved == 'system') {
+        mode.value = ThemeMode.system;
+      } else {
+        mode.value = ThemeMode.dark;
+      }
+    } catch (_) {}
+  }
+
+  static Future<void> setTheme(ThemeMode newMode) async {
+    mode.value = newMode;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final str = newMode == ThemeMode.light
+          ? 'light'
+          : newMode == ThemeMode.dark
+              ? 'dark'
+              : 'system';
+      await prefs.setString('setting_theme_mode', str);
+    } catch (_) {}
+  }
+}
 
 /// Design tokens shared across the app.
 class AppColors {
