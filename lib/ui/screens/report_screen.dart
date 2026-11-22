@@ -180,7 +180,6 @@ ${report.safeNextSteps.map((s) => '• $s').join('\n')}
 
   Widget _buildHero() {
     final color = _levelColor;
-    final hi = _selectedLanguage == 'hi';
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
@@ -239,10 +238,8 @@ ${report.safeNextSteps.map((s) => '• $s').join('\n')}
           ),
           const SizedBox(height: 10),
           Text(
-            hi
-                ? VernacularTranslationService.getHindiSummary(
-                    report.summary, report.threatLevel.name, report.riskScore)
-                : report.summary,
+            VernacularTranslationService.getSummary(
+                _selectedLanguage, report.summary, report.threatLevel.name, report.riskScore),
             textAlign: TextAlign.center,
             style: const TextStyle(fontSize: 15, height: 1.5),
           ),
@@ -254,24 +251,67 @@ ${report.safeNextSteps.map((s) => '• $s').join('\n')}
   }
 
   Widget _buildLanguageToggle() {
+    const languages = VernacularTranslationService.supportedLanguages;
     return SizedBox(
-      width: double.infinity,
-      child: SegmentedButton<String>(
-        showSelectedIcon: false,
-        segments: const [
-          ButtonSegment(value: 'en', label: Text('English')),
-          ButtonSegment(value: 'hi', label: Text('हिंदी / Hinglish')),
-        ],
-        selected: {_selectedLanguage},
-        onSelectionChanged: (s) => setState(() => _selectedLanguage = s.first),
+      height: 40,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: languages.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 8),
+        itemBuilder: (context, index) {
+          final lang = languages[index];
+          final isSelected = _selectedLanguage == lang.code;
+          return ChoiceChip(
+            showCheckmark: false,
+            avatar: isSelected
+                ? const Icon(Icons.translate_rounded, size: 14, color: Colors.white)
+                : null,
+            label: Text(
+              lang.code == 'en' ? 'English' : '${lang.nativeName} (${lang.name})',
+              style: TextStyle(
+                fontSize: 12.5,
+                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                color: isSelected ? Colors.white : context.mutedText,
+              ),
+            ),
+            selected: isSelected,
+            selectedColor: AppColors.brand,
+            backgroundColor: context.surfaceColor,
+            side: BorderSide(
+              color: isSelected ? AppColors.brand : context.outlineColor,
+            ),
+            onSelected: (val) {
+              if (val) setState(() => _selectedLanguage = lang.code);
+            },
+          );
+        },
       ),
     );
   }
 
+  String get _nextStepsTitle {
+    switch (_selectedLanguage) {
+      case 'hi':
+        return 'अब क्या करें (सुरक्षा निर्देश)';
+      case 'ta':
+        return 'அடுத்து என்ன செய்ய வேண்டும்';
+      case 'te':
+        return 'ఇప్పుడు ఏమి చేయాలి';
+      case 'bn':
+        return 'এখন কি করণীয়';
+      case 'mr':
+        return 'आता काय करावे';
+      case 'gu':
+        return 'હવે શું કરવું';
+      case 'kn':
+        return 'ಈಗ ಏನು ಮಾಡಬೇಕು';
+      default:
+        return 'What to do now';
+    }
+  }
+
   Widget _buildNextSteps() {
-    final steps = _selectedLanguage == 'hi'
-        ? VernacularTranslationService.getHindiNextSteps()
-        : report.safeNextSteps;
+    final steps = VernacularTranslationService.getNextSteps(_selectedLanguage, report.safeNextSteps);
     return AppCard(
       borderColor: AppColors.safe.withOpacity(0.4),
       child: Column(
@@ -461,7 +501,7 @@ ${report.safeNextSteps.map((s) => '• $s').join('\n')}
           const SizedBox(height: AppSpacing.xl),
 
           if (report.safeNextSteps.isNotEmpty) ...[
-            _title(_selectedLanguage == 'hi' ? 'अब क्या करें' : 'What to do now'),
+            _title(_nextStepsTitle),
             _buildNextSteps(),
             const SizedBox(height: AppSpacing.xl),
           ],

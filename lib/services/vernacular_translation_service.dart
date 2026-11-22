@@ -1,65 +1,212 @@
+class LanguageOption {
+  final String code;
+  final String name;
+  final String nativeName;
+
+  const LanguageOption({
+    required this.code,
+    required this.name,
+    required this.nativeName,
+  });
+}
+
 class VernacularTranslationService {
-  /// Generates a colloquial Hindi / Hinglish explanation for an investigation report
-  static String getHindiSummary(String englishSummary, String threatLevel, int riskScore) {
-    if (englishSummary.toLowerCase().contains('arrest') ||
-        englishSummary.toLowerCase().contains('passport') ||
-        englishSummary.toLowerCase().contains('customs') ||
-        englishSummary.toLowerCase().contains('cbi')) {
-      return 'चेतावनी: यह एक "डिजिटल अरेस्ट" (Digital Arrest) और नकली पुलिस/कस्टम्स फ्रॉड का प्रयास है। कोई भी सरकारी जांच एजेंसी या पुलिस कभी भी स्काइप या व्हाट्सएप वीडियो कॉल पर पूछताछ या अरेस्ट नहीं करती है। न ही वे "सिक्योरिटी डिपॉजिट" मांगते हैं।';
-    }
+  static const List<LanguageOption> supportedLanguages = [
+    LanguageOption(code: 'en', name: 'English', nativeName: 'English'),
+    LanguageOption(code: 'hi', name: 'Hindi', nativeName: 'हिंदी'),
+    LanguageOption(code: 'ta', name: 'Tamil', nativeName: 'தமிழ்'),
+    LanguageOption(code: 'te', name: 'Telugu', nativeName: 'తెలుగు'),
+    LanguageOption(code: 'bn', name: 'Bengali', nativeName: 'বাংলা'),
+    LanguageOption(code: 'mr', name: 'Marathi', nativeName: 'मराठी'),
+    LanguageOption(code: 'gu', name: 'Gujarati', nativeName: 'ગુજરાતી'),
+    LanguageOption(code: 'kn', name: 'Kannada', nativeName: 'ಕನ್ನಡ'),
+  ];
 
-    if (englishSummary.toLowerCase().contains('electricity') ||
-        englishSummary.toLowerCase().contains('power') ||
-        englishSummary.toLowerCase().contains('bill')) {
-      return 'चेतावनी: यह नकली "बिजली बिल डिस्कनेक्शन" का फर्जीवाड़ा है। जालसाज आपको डराकर किसी अनजान नंबर पर कॉल करने या कोई APK/AnyDesk ऐप डाउनलोड करवाने की कोशिश कर रहे हैं। बिजली विभाग रात में ऐसे व्यक्तिगत नंबर से मैसेज नहीं भेजता।';
-    }
+  /// Generates a colloquial vernacular explanation for an investigation report
+  static String getSummary(String langCode, String englishSummary, String threatLevel, int riskScore) {
+    if (langCode == 'en') return englishSummary;
 
-    if (englishSummary.toLowerCase().contains('upi') ||
-        englishSummary.toLowerCase().contains('qr') ||
-        englishSummary.toLowerCase().contains('refund') ||
-        englishSummary.toLowerCase().contains('cashback')) {
-      return 'चेतावनी: यह "स्कैन टू रिसीव" (Scan to Receive) यूपीआई फ्रॉड है। याद रखें: किसी से पैसे प्राप्त करने या रिफंड लेने के लिए कभी भी क्यूआर कोड स्कैन करने या यूपीआई पिन (PIN) दर्ज करने की आवश्यकता नहीं होती। पिन डालने से आपके खाते से पैसे कट जाएंगे।';
-    }
+    final lower = englishSummary.toLowerCase();
+    final isArrest = lower.contains('arrest') || lower.contains('cbi') || lower.contains('police') || lower.contains('customs');
+    final isPower = lower.contains('electricity') || lower.contains('power') || lower.contains('bill');
+    final isUpi = lower.contains('upi') || lower.contains('qr') || lower.contains('refund') || lower.contains('cashback') || lower.contains('pin');
+    final isKyc = lower.contains('kyc') || lower.contains('bank') || lower.contains('pan') || lower.contains('yono');
+    final isApk = lower.contains('apk') || lower.contains('app') || lower.contains('install');
 
-    if (englishSummary.toLowerCase().contains('kyc') ||
-        englishSummary.toLowerCase().contains('bank') ||
-        englishSummary.toLowerCase().contains('pan')) {
-      return 'चेतावनी: यह बैंक केवाईसी (KYC) सस्पेंशन के नाम पर आपकी निजी जानकारी चुराने का फिशिंग हमला है। बैंक कभी भी एसएमएस या व्हाट्सएप लिंक के जरिए आधार, पैन या ओटीपी अपडेट करने को नहीं कहते।';
-    }
+    switch (langCode) {
+      case 'hi':
+        if (isArrest) {
+          return 'चेतावनी: यह एक "डिजिटल अरेस्ट" (Digital Arrest) और नकली पुलिस/सीबीआई फ्रॉड का प्रयास है। कोई भी सरकारी जांच एजेंसी कभी भी स्काइप या व्हाट्सएप वीडियो कॉल पर पूछताछ या अरेस्ट नहीं करती है। न ही वे "सिक्योरिटी डिपॉजिट" मांगते हैं।';
+        }
+        if (isPower) {
+          return 'चेतावनी: यह नकली "बिजली बिल डिस्कनेक्शन" का फर्जीवाड़ा है। जालसाज आपको डराकर किसी अनजान नंबर पर कॉल करने या कोई APK/AnyDesk ऐप डाउनलोड करवाने की कोशिश कर रहे हैं। बिजली विभाग रात में ऐसे व्यक्तिगत नंबर से मैसेज नहीं भेजता।';
+        }
+        if (isUpi) {
+          return 'चेतावनी: यह "स्कैन टू रिसीव" (Scan to Receive) यूपीआई फ्रॉड है। याद रखें: किसी से पैसे प्राप्त करने या रिफंड लेने के लिए कभी भी क्यूआर कोड स्कैन करने या यूपीआई पिन (PIN) दर्ज करने की आवश्यकता नहीं होती। पिन डालने से आपके खाते से पैसे कट जाएंगे।';
+        }
+        if (isKyc) {
+          return 'चेतावनी: यह बैंक केवाईसी (KYC) सस्पेंशन के नाम पर आपकी निजी जानकारी चुराने का फिशिंग हमला है। बैंक कभी भी एसएमएस या व्हाट्सएप लिंक के जरिए आधार, पैन या ओटीपी अपडेट करने को नहीं कहते।';
+        }
+        if (isApk) {
+          return 'चेतावनी: यह एक खतरनाक रिमोट एक्सेस ट्रोजन (APK) हमला है। इस फाइल को इंस्टॉल करने से जालसाज आपके बैंक एसएमएस और ओटीपी (OTP) को दूर से पढ़ सकते हैं।';
+        }
+        return 'सावधानी: ट्रेसबैक एआई ने इस संदेश को $riskScore% जोखिम के साथ संदिग्ध पाया है। संदेश में दिए गए किसी भी लिंक पर क्लिक न करें और न ही कोई ऐप डाउनलोड करें।';
 
-    return 'सावधानी: ट्रेसबैक एआई ने इस संदेश को $riskScore% जोखिम के साथ संदिग्ध पाया है। संदेश में दिए गए किसी भी लिंक पर क्लिक न करें और न ही कोई ऐप डाउनलोड करें।';
+      case 'ta':
+        if (isArrest) {
+          return 'எச்சரிக்கை: இது "டிஜிட்டல் அரெஸ்ட்" (Digital Arrest) மற்றும் போலி போலீஸ்/CBI மோசடி முயற்சி. அரசு புலனாய்வு அமைப்புகளோ அல்லது போலீசாரோ ஒருபோதும் வாட்ஸ்அப் அல்லது ஸ்கைப் வீடியோ காலில் விசாரணை செய்வதோ அல்லது பணம் கேட்பதோ இல்லை.';
+        }
+        if (isPower) {
+          return 'எச்சரிக்கை: இது போலி "மின் கட்டண இணைப்பு துண்டிப்பு" மோசடி. பீதியை ஏற்படுத்தி மர்ம எண்களுக்கு அழைக்கவோ அல்லது தீங்கிழைக்கும் ஆப் (APK) பதிவிறக்கவோ வைக்க முயற்சிக்கின்றனர்.';
+        }
+        if (isUpi) {
+          return 'எச்சரிக்கை: இது UPI "ஸ்கேன் செய்து பணம் பெறுங்கள்" மோசடி. நினைவில் கொள்ளுங்கள்: பணம் பெற அல்லது ரீஃபண்ட் பெற ஒருபோதும் UPI பின் (PIN) உள்ளிடவோ QR கோட் ஸ்கேன் செய்யவோ தேவையில்லை.';
+        }
+        if (isKyc) {
+          return 'எச்சரிக்கை: வங்கி KYC அப்டேட் என்ற பெயரில் உங்கள் கடவுச்சொல் மற்றும் OTP-ஐ திருட முயற்சிக்கும் போலி செய்தி. வங்கி ஒருபோதும் SMS மூலம் லிங்குகளை அனுப்பாது.';
+        }
+        return 'எச்சரிக்கை: ட்ரேஸ்பேக் AI இந்த செய்தியை $riskScore% அபாயகரமானதாக கண்டறிந்துள்ளது. எந்தவொரு இணைப்பையும் கிளிக் செய்யாதீர்கள் மற்றும் ஆப்-ஐ பதிவிறக்காதீர்கள்.';
+
+      case 'te':
+        if (isArrest) {
+          return 'హెచ్చరిక: ఇది "డిజిటల్ అరెస్ట్" (Digital Arrest) మరియు నకిలీ పోలీస్/CBI మోసం. ఏ ప్రభుత్వ దర్యాప్తు సంస్థ లేదా పోలీసులు వాట్సాప్ లేదా స్కైప్ వీడియో కాల్‌లలో విచారణ చేయరు లేదా సెక్యూరిటీ డిపాజిట్ డిమాండ్ చేయరు.';
+        }
+        if (isPower) {
+          return 'హెచ్చరిక: ఇది నకిలీ "విద్యుత్ బిల్లు నిలిపివేత" మోసం. వ్యక్తిగత నంబర్ల నుండి వచ్చే ఇలాంటి సందేశాలను నమ్మవద్దు మరియు ఏ APK యాప్‌ను డౌన్‌లోడ్ చేయవద్దు.';
+        }
+        if (isUpi) {
+          return 'హెచ్చరిక: ఇది UPI రివర్స్ పేమెంట్ మోసం. గుర్తుంచుకోండి: ఇతరుల నుండి డబ్బు లేదా క్యాష్‌బ్యాక్ స్వీకరించడానికి ఎప్పుడూ UPI పిన్ (PIN) ఎంటర్ చేయాల్సిన అవసరం లేదు.';
+        }
+        if (isKyc) {
+          return 'హెచ్చరిక: బ్యాంక్ KYC గడువు ముగిసిందని భయపెట్టి మీ ఖాతా వివరాలు దొంగిలించే ఫిషింగ్ సందేశం. బ్యాంకులు ఎప్పుడూ SMS ద్వారా లింక్‌లను పంపవు.';
+        }
+        return 'హెచ్చరిక: ట్రేస్‌బ్యాక్ AI ఈ సందేశాన్ని $riskScore% ప్రమాదకరమైనదిగా గుర్తించింది. ఎలాంటి లింక్‌లపై క్లిక్ చేయవద్దు మరియు అపరిచిత వ్యక్తులకు సమాచారం ఇవ్వవద్దు.';
+
+      case 'bn':
+        if (isArrest) {
+          return 'সতর্কতা: এটি একটি "ডিজিটাল অ্যারেস্ট" (Digital Arrest) এবং ভুয়ো পুলিশ/সিবিআই প্রতারণার ফাঁদ। কোনো সরকারি তদন্তকারী সংস্থা বা পুলিশ কখনো হোয়াটসঅ্যাপ বা স্কাইপ ভিডিও কলে জেরা করে না বা টাকা দাবি করে না।';
+        }
+        if (isPower) {
+          return 'সতর্কতা: এটি ভুয়ো "বিদ্যুৎ বিল বকেয়া ও লাইন বিচ্ছিন্ন" করার জালিয়াতি। আতঙ্কিত হয়ে কোনো ব্যক্তিগত নম্বরে ফোন করবেন না বা কোনো APK অ্যাপ ডাউনলোড করবেন না।';
+        }
+        if (isUpi) {
+          return 'সতর্কতা: এটি UPI "টাকা পেতে কিউআর স্ক্যান করুন" প্রতারণা। মনে রাখবেন: টাকা গ্রহণ বা রিফান্ড পেতে কখনো UPI পিন (PIN) দিতে হয় না বা কিউআর স্ক্যান করতে হয় না।';
+        }
+        if (isKyc) {
+          return 'সতর্কতা: ব্যাংক KYC যাচাইয়ের নামে এটি একটি বিপজ্জনক ফিশিং ফাঁদ। ব্যাংক কখনো এসএমএস বা হোয়াটসঅ্যাপ লিংকের মাধ্যমে প্যান বা আধার আপডেট করতে বলে না।';
+        }
+        return 'সাবধান: ট্রেসবেক এআই এই বার্তায় $riskScore% সাইবার ঝুঁকি শনাক্ত করেছে। কোনো লিংকে ক্লিক করবেন না বা অপরিচিত অ্যাপ ডাউনলোড করবেন না।';
+
+      case 'mr':
+        if (isArrest) {
+          return 'सावधान: हा "डिजिटल अरेस्ट" (Digital Arrest) आणि बनावट पोलीस/सीबीआय फसवणुकीचा प्रकार आहे. कोणतीही अधिकृत तपास यंत्रणा स्काईप किंवा व्हॉट्सॲप व्हिडिओ कॉलवर चौकशी करत नाही किंवा पैशांची मागणी करत नाही.';
+        }
+        if (isPower) {
+          return 'सावधान: हा बनावट "वीज बिल डिस्कनेक्शन" घोटाळा आहे. भीतीपोटी कोणत्याही वैयक्तिक नंबरवर कॉल करू नका किंवा कोणतेही अनधिकृत ॲप (APK) डाउनलोड करू नका.';
+        }
+        if (isUpi) {
+          return 'सावधान: हा UPI रिव्हर्स पेमेंट घोटाळा आहे. लक्षात ठेवा: पैसे किंवा कॅशबॅक मिळवण्यासाठी कधीही UPI पिन (PIN) टाकण्याची आवश्यकता नसते.';
+        }
+        if (isKyc) {
+          return 'सावधान: बँक केवायसी (KYC) अपडेट करण्याच्या नावाखाली तुमची गोपनीय माहिती चोरण्याचा हा प्रयत्न आहे. बँक कधीही SMS द्वारे लिंक पाठवत नाही.';
+        }
+        return 'सावधान: ट्रेसबॅक AI ने या संदेशामध्ये $riskScore% सायबर धोका ओळखला आहे. कोणत्याही लिंकवर क्लिक करू नका.';
+
+      case 'gu':
+        if (isArrest) {
+          return 'ચેતવણી: આ "ડિજિટલ અરેસ્ટ" (Digital Arrest) અને નકલી પોલીસ/CBI છેતરપિંડીનો પ્રયાસ છે. કોઈપણ સરકારી એજન્સી ક્યારેય વોટ્સએપ કે વિડીયો કોલ પર પૂછપરછ કરતી નથી કે પૈસાની માંગણી કરતી નથી.';
+        }
+        if (isPower) {
+          return 'ચેતવણી: આ નકલી "વીજળી બિલ કનેક્શન કટ" કરવાની છેતરપિંડી છે. ગભરાઈને કોઈપણ અજાણ્યા નંબર પર કૉલ કરશો નહીં કે કોઈ APK ઍપ ડાઉનલોડ કરશો નહીં.';
+        }
+        if (isUpi) {
+          return 'ચેતવણી: આ UPI કેશબેક/રીફંડ છેતરપિંડી છે. યાદ રાખો: પૈસા મેળવવા માટે ક્યારેય UPI પિન (PIN) નાખવાની કે QR સ્કેન કરવાની જરૂર હોતી નથી.';
+        }
+        if (isKyc) {
+          return 'ચેતવણી: બેંક KYC અપડેટના નામે ફિશિંગ સંદેશ છે. બેંકો ક્યારેય SMS લિંક દ્વારા આધાર કે પાન અપડેટ કરવાનું કહેતી નથી.';
+        }
+        return 'સાવચેત રહો: ટ્રેસબેક AI એ આ મેસેજમાં $riskScore% જોખમ શોધી કાઢ્યું છે. અજાણી લિંક પર ક્લિક કરશો નહીં.';
+
+      case 'kn':
+        if (isArrest) {
+          return 'ಎಚ್ಚರಿಕೆ: ಇದು "ಡಿಜಿಟಲ್ ಅರೆಸ್ಟ್" (Digital Arrest) ಮತ್ತು ನಕಲಿ ಪೊಲೀಸ್/CBI ವಂಚನೆಯಾಗಿದೆ. ಯಾವುದೇ ಸರ್ಕಾರಿ ತನಿಖಾ ಸಂಸ್ಥೆ ವಿಡಿಯೋ ಕಾಲ್‌ನಲ್ಲಿ ವಿಚಾರಣೆ ನಡೆಸುವುದಿಲ್ಲ ಅಥವಾ ಠೇವಣಿ ಕೇಳುವುದಿಲ್ಲ.';
+        }
+        if (isPower) {
+          return 'ಎಚ್ಚರಿಕೆ: ಇದು ನಕಲಿ "ವಿದ್ಯುತ್ ಸಂಪರ್ಕ ಕಡಿತ" ವಂಚನೆ. ಹೆದರಿ ಯಾವುದೇ ವೈಯಕ್ತಿಕ ಸಂಖ್ಯೆಗೆ ಕರೆ ಮಾಡಬೇಡಿ ಅಥವಾ ಅಪರಿಚಿತ ಆಪ್ ಡೌನ್‌ಲೋಡ್ ಮಾಡಬೇಡಿ.';
+        }
+        if (isUpi) {
+          return 'ಎಚ್ಚರಿಕೆ: ಇದು UPI ರಿವರ್ಸ್ ಪಾವತಿ ವಂಚನೆ. ನೆನಪಿಡಿ: ಹಣ ಅಥವಾ ಮರುಪಾವತಿ ಪಡೆಯಲು ಎಂದಿಗೂ UPI ಪಿನ್ (PIN) ನಮೂದಿಸಬೇಕಾಗಿಲ್ಲ.';
+        }
+        if (isKyc) {
+          return 'ಎಚ್ಚರಿಕೆ: ಬ್ಯಾಂಕ್ KYC ನವೀಕರಣದ ನೆಪದಲ್ಲಿ ನಿಮ್ಮ ವಿವರಗಳನ್ನು ಕದಿಯುವ ಫಿಶಿಂಗ್ ಸಂದೇಶವಾಗಿದೆ.';
+        }
+        return 'ಎಚ್ಚರಿಕೆ: ಟ್ರೇಸ್‌ಬ್ಯಾಕ್ AI ಈ ಸಂದೇಶದಲ್ಲಿ $riskScore% ಸೈಬರ್ ಅಪಾಯವನ್ನು ಗುರುತಿಸಿದೆ. ಯಾವುದೇ ಲಿಂಕ್ ಕ್ಲಿಕ್ ಮಾಡಬೇಡಿ.';
+
+      default:
+        return englishSummary;
+    }
   }
 
-  static List<String> getHindiRedFlags(List<String> flags) {
-    final hindiFlags = <String>[];
-    for (final f in flags) {
-      final lower = f.toLowerCase();
-      if (lower.contains('urgency') || lower.contains('time') || lower.contains('panic')) {
-        hindiFlags.add('अनावश्यक हड़बड़ी और डर पैदा करना (तुरंत कार्रवाई न करने पर नुकसान की धमकी)');
-      } else if (lower.contains('authority') || lower.contains('police') || lower.contains('officer')) {
-        hindiFlags.add('सरकारी अधिकारी या पुलिस होने का फर्जी दिखावा');
-      } else if (lower.contains('apk') || lower.contains('malware') || lower.contains('download')) {
-        hindiFlags.add('अनजान ऐप (APK) डाउनलोड करने का दबाव ताकि फोन हैक किया जा सके');
-      } else if (lower.contains('link') || lower.contains('url') || lower.contains('domain')) {
-        hindiFlags.add('फर्जी या संदेहास्पद वेब लिंक जो असली वेबसाइट जैसी दिखती है');
-      } else if (lower.contains('money') || lower.contains('deposit') || lower.contains('fee')) {
-        hindiFlags.add('सत्यापन या रिफंड के नाम पर पैसे ट्रांसफर करने की मांग');
-      } else {
-        hindiFlags.add('संदेहास्पद संकेत: $f');
-      }
+  /// Returns localized emergency recovery playbooks for victims
+  static List<String> getNextSteps(String langCode, List<String> fallbackEnglishSteps) {
+    switch (langCode) {
+      case 'hi':
+        return [
+          'तत्काल 1930 डायल करें (राष्ट्रीय साइबर अपराध हेल्पलाइन) या cybercrime.gov.in पर शिकायत दर्ज करें।',
+          'अपने बैंक के हेल्पलाइन नंबर पर कॉल करके संबंधित यूपीआई/कार्ड या नेटबैंकिंग को तुरंत ब्लॉक करवाएं।',
+          'याद रखें: पैसे प्राप्त करने के लिए कभी भी यूपीआई पिन (PIN) की आवश्यकता नहीं होती।',
+          'संदेश भेजने वाले को तुरंत ब्लॉक करें और किसी भी लिंक या फॉर्म में कोई विवरण न भरें।',
+        ];
+      case 'ta':
+        return [
+          'உடனடியாக 1930 எண்ணை அழைக்கவும் (தேசிய சைபர் கிரைம் உதவி எண்) அல்லது cybercrime.gov.in இல் புகார் அளிக்கவும்.',
+          'உங்கள் வங்கியைத் தொடர்புகொண்டு உடனடியாக UPI, டெபிட் கார்டு அல்லது நெட்பேங்கிங்கை முடக்கவும்.',
+          'நினைவில் கொள்ளுங்கள்: பணம் பெற ஒருபோதும் UPI பின் (PIN) உள்ளிடத் தேவையில்லை.',
+          'அனுப்பியவரை உடனடியாக பிளாக் செய்யவும் மற்றும் எந்த இணைப்பையும் கிளிக் செய்ய வேண்டாம்.',
+        ];
+      case 'te':
+        return [
+          'వెంటనే 1930 కు కాల్ చేయండి (జాతీయ సైబర్ క్రైమ్ హెల్ప్‌లైన్) లేదా cybercrime.gov.in లో ఫిర్యాదు చేయండి.',
+          'మీ బ్యాంక్ హెల్ప్‌లైన్‌కు కాల్ చేసి UPI, డెబిట్ కార్డు లేదా నెట్‌బ్యాంకింగ్‌ను వెంటనే బ్లాక్ చేయండి.',
+          'గుర్తుంచుకోండి: డబ్బు స్వీకరించడానికి ఎప్పుడూ UPI పిన్ ఎంటర్ చేయవద్దు.',
+          'సందేశం పంపినవారిని వెంటనే బ్లాక్ చేయండి మరియు ఏ లింక్‌లను తెరవవద్దు.',
+        ];
+      case 'bn':
+        return [
+          'অবিলম্বে ১৯৩০ নম্বরে কল করুন (জাতীয় সাইবার ক্রাইম হেল্পলাইন) বা cybercrime.gov.in-এ অভিযোগ জানান।',
+          'আপনার ব্যাংকে ফোন করে অবিলম্বে ইউপিআই, ডেবিট কার্ড বা নেটব্যাঙ্কিং ব্লক করান।',
+          'মনে রাখবেন: টাকা পেতে কখনো ইউপিআই পিন (PIN) দিতে হয় না।',
+          'প্রেরককে অবিলম্বে ব্লক করুন এবং কোনো লিংকে ব্যক্তিগত তথ্য পূরণ করবেন না।',
+        ];
+      case 'mr':
+        return [
+          'त्वरित १९३० डायल करा (राष्ट्रीय सायबर गुन्हे हेल्पलाइन) किंवा cybercrime.gov.in वर तक्रार नोंदवा.',
+          'आपल्या बँकेशी संपर्क साधून संबंधित कार्ड, UPI किंवा नेटबँकिंग तात्काळ ब्लॉक करा.',
+          'लक्षात ठेवा: पैसे मिळवण्यासाठी कधीही UPI पिन टाकण्याची गरज नसते.',
+          'संदेश पाठवणाऱ्याला त्वरित ब्लॉक करा आणि कोणत्याही लिंकवर क्लिक करू नका.',
+        ];
+      case 'gu':
+        return [
+          'તાત્કાલિક 1930 ડાયલ કરો (રાષ્ટ્રીય સાયબર ક્રાઈમ હેલ્પલાઇન) અથવા cybercrime.gov.in પર ફરિયાદ નોંધાવો.',
+          'તમારી બેંકના કસ્ટમર કેરમાં કૉલ કરી કાર્ડ, UPI અથવા નેટબેંકિંગ તુરંત બ્લોક કરાવો.',
+          'યાદ રાખો: પૈસા મેળવવા માટે ક્યારેય UPI પિન નાખવાની જરૂર નથી.',
+          'મોકલનારને તરત જ બ્લોક કરો અને કોઈપણ લિંક પર ક્લિક કરશો નહીં.',
+        ];
+      case 'kn':
+        return [
+          'ತಕ್ಷಣವೇ 1930 ಗೆ ಕರೆ ಮಾಡಿ (ರಾಷ್ಟ್ರೀಯ ಸೈಬರ್ ಅಪರಾಧ ಸಹಾಯವಾಣಿ) ಅಥವಾ cybercrime.gov.in ನಲ್ಲಿ ದೂರು ದಾಖಲಿಸಿ.',
+          'ನಿಮ್ಮ ಬ್ಯಾಂಕ್‌ಗೆ ಕರೆ ಮಾಡಿ ಕಾರ್ಡ್, UPI ಅಥವಾ ನೆಟ್‌ಬ್ಯಾಂಕಿಂಗ್ ಅನ್ನು ತಕ್ಷಣ ಬ್ಲಾಕ್ ಮಾಡಿ.',
+          'ನೆನಪಿಡಿ: ಹಣ ಪಡೆಯಲು ಎಂದಿಗೂ UPI ಪಿನ್ ನಮೂದಿಸಬೇಡಿ.',
+          'ಸಂದೇಶ ಕಳುಹಿಸಿದವರನ್ನು ತಕ್ಷಣ ಬ್ಲಾಕ್ ಮಾಡಿ ಮತ್ತು ಯಾವುದೇ ಲಿಂಕ್ ತೆರೆಯಬೇಡಿ.',
+        ];
+      default:
+        return fallbackEnglishSteps;
     }
-    if (hindiFlags.isEmpty) {
-      hindiFlags.add('अज्ञात स्रोत से प्राप्त संदेहास्पद संदेश');
-    }
-    return hindiFlags;
   }
 
-  static List<String> getHindiNextSteps() {
-    return [
-      'तत्काल 1930 डायल करें (राष्ट्रीय साइबर अपराध हेल्पलाइन) या cybercrime.gov.in पर शिकायत दर्ज करें।',
-      'अपने बैंक के हेल्पलाइन नंबर पर कॉल करके संबंधित यूपीआई/कार्ड या नेटबैंकिंग को अस्थायी रूप से ब्लॉक करवाएं।',
-      'संदेश भेजने वाले को तुरंत ब्लॉक करें और किसी भी लिंक या फॉर्म में कोई विवरण न भरें।',
-      'अपने परिवार और दोस्तों को इस तरह के फ्रॉड पैटर्न के बारे में सचेत करें।',
-    ];
-  }
+  // Backwards compatibility helpers
+  static String getHindiSummary(String englishSummary, String threatLevel, int riskScore) =>
+      getSummary('hi', englishSummary, threatLevel, riskScore);
+
+  static List<String> getHindiNextSteps() => getNextSteps('hi', const []);
 }
