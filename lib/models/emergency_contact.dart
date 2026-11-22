@@ -15,6 +15,28 @@ class EmergencyContact {
     required this.advice,
   });
 
+  Map<String, dynamic> toMap() {
+    return {
+      'entityName': entityName,
+      'category': category,
+      'primaryContact': primaryContact,
+      'alternativeContact': alternativeContact,
+      'website': website,
+      'advice': advice,
+    };
+  }
+
+  factory EmergencyContact.fromMap(Map<String, dynamic> map) {
+    return EmergencyContact(
+      entityName: map['entityName'] ?? '',
+      category: map['category'] ?? 'Helpline',
+      primaryContact: map['primaryContact'] ?? '',
+      alternativeContact: map['alternativeContact'],
+      website: map['website'],
+      advice: map['advice'] ?? '',
+    );
+  }
+
   static const List<EmergencyContact> verifiedDirectory = [
     EmergencyContact(
       entityName: 'National Cybercrime Reporting Portal',

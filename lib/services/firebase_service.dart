@@ -6,6 +6,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_remote_config/firebase_remote_config.dart';
 
 import '../firebase_options.dart';
+import '../models/emergency_contact.dart';
 import '../models/scam_radar_item.dart';
 import '../models/threat_report.dart';
 
@@ -176,6 +177,37 @@ class FirebaseService {
       }).toList();
 
       return [...items, ...ScamRadarItem.trendingScams];
+    });
+  }
+
+  /// Streams verified emergency contacts from Firestore with instant statutory fallback
+  static Stream<List<EmergencyContact>> streamEmergencyContacts() {
+    if (!_initialized) {
+      return Stream.value(EmergencyContact.verifiedDirectory);
+    }
+    return FirebaseFirestore.instance
+        .collection('verified_emergency_contacts')
+        .snapshots()
+        .map((snapshot) {
+      if (snapshot.docs.isEmpty) {
+        return EmergencyContact.verifiedDirectory;
+      }
+      final cloudContacts = snapshot.docs.map((doc) {
+        return EmergencyContact.fromMap(doc.data());
+      }).toList();
+
+      // Merge cloud contacts with statutory verified directory (deduplicated by entityName)
+      final names = cloudContacts.map((c) => c.entityName.toLowerCase()).toSet();
+      final merged = [...cloudContacts];
+      for (final def in EmergencyContact.verifiedDirectory) {
+        if (!names.contains(def.entityName.toLowerCase())) {
+          merged.add(def);
+        }
+      }
+      return merged;
+    }).handleError((e) {
+      debugPrint('Firestore emergency contacts stream error: $e');
+      return EmergencyContact.verifiedDirectory;
     });
   }
 }

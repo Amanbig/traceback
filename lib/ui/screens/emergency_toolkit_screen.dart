@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../models/emergency_contact.dart';
+import '../../services/firebase_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/common.dart';
 
@@ -333,61 +334,95 @@ Sincerely,
 
   @override
   Widget build(BuildContext context) {
-    final q = _searchQuery.toLowerCase().trim();
-    final filtered = EmergencyContact.verifiedDirectory.where((c) {
-      return c.entityName.toLowerCase().contains(q) ||
-          c.category.toLowerCase().contains(q) ||
-          c.primaryContact.toLowerCase().contains(q);
-    }).toList();
-
     return Scaffold(
       appBar: AppBar(title: const Text('Emergency help')),
-      body: ListView(
-        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-        padding: const EdgeInsets.fromLTRB(AppSpacing.screenH, 4, AppSpacing.screenH, 32),
-        children: [
-          _buildHelplineHero(),
-          const SizedBox(height: AppSpacing.xl),
-          const SectionHeader('What to do right now'),
-          _buildChecklist(),
-          const SizedBox(height: AppSpacing.md),
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              onPressed: _showDisputeLetterGenerator,
-              icon: const Icon(Icons.description_outlined, size: 18),
-              label: const Text('Write a bank dispute letter'),
-            ),
-          ),
-          const SizedBox(height: AppSpacing.xl),
-          const SectionHeader('Verified contacts'),
-          Padding(
-            padding: const EdgeInsets.only(bottom: AppSpacing.md),
-            child: Text(
-              'Only use these numbers. Never call a number sent by SMS or found on an unofficial site.',
-              style: TextStyle(fontSize: 13.5, height: 1.4, color: context.mutedText),
-            ),
-          ),
-          TextField(
-            onChanged: (val) => setState(() => _searchQuery = val),
-            decoration: const InputDecoration(
-              hintText: 'Search bank, helpline or portal',
-              prefixIcon: Icon(Icons.search_rounded),
-            ),
-          ),
-          const SizedBox(height: AppSpacing.lg),
-          if (filtered.isEmpty)
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 24),
-              child: EmptyState(
-                icon: Icons.search_off_rounded,
-                title: 'No contacts found',
-                message: 'Try the name of your bank, or search "helpline".',
+      body: StreamBuilder<List<EmergencyContact>>(
+        stream: FirebaseService.streamEmergencyContacts(),
+        initialData: EmergencyContact.verifiedDirectory,
+        builder: (context, snapshot) {
+          final contacts = snapshot.data ?? EmergencyContact.verifiedDirectory;
+          final q = _searchQuery.toLowerCase().trim();
+          final filtered = contacts.where((c) {
+            return c.entityName.toLowerCase().contains(q) ||
+                c.category.toLowerCase().contains(q) ||
+                c.primaryContact.toLowerCase().contains(q);
+          }).toList();
+
+          return ListView(
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+            padding: const EdgeInsets.fromLTRB(AppSpacing.screenH, 4, AppSpacing.screenH, 32),
+            children: [
+              _buildHelplineHero(),
+              const SizedBox(height: AppSpacing.xl),
+              const SectionHeader('What to do right now'),
+              _buildChecklist(),
+              const SizedBox(height: AppSpacing.md),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: _showDisputeLetterGenerator,
+                  icon: const Icon(Icons.description_outlined, size: 18),
+                  label: const Text('Write a bank dispute letter'),
+                ),
               ),
-            )
-          else
-            for (final item in filtered) _buildContactCard(item),
-        ],
+              const SizedBox(height: AppSpacing.xl),
+              Row(
+                children: [
+                  const Expanded(child: SectionHeader('Verified contacts')),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: AppColors.safe.withOpacity(0.12),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: AppColors.safe.withOpacity(0.3)),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.verified_user_rounded, size: 13, color: AppColors.safe),
+                        SizedBox(width: 5),
+                        Text(
+                          'RBI & DoT Verified',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.safe,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              Padding(
+                padding: const EdgeInsets.only(bottom: AppSpacing.md),
+                child: Text(
+                  'Only use these verified numbers. Never call numbers from SMS, spoofed emails, or search engine ads.',
+                  style: TextStyle(fontSize: 13.5, height: 1.4, color: context.mutedText),
+                ),
+              ),
+              TextField(
+                onChanged: (val) => setState(() => _searchQuery = val),
+                decoration: const InputDecoration(
+                  hintText: 'Search bank, helpline or portal',
+                  prefixIcon: Icon(Icons.search_rounded),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              if (filtered.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 24),
+                  child: EmptyState(
+                    icon: Icons.search_off_rounded,
+                    title: 'No contacts found',
+                    message: 'Try the name of your bank, or search "helpline".',
+                  ),
+                )
+              else
+                for (final item in filtered) _buildContactCard(item),
+            ],
+          );
+        },
       ),
     );
   }
