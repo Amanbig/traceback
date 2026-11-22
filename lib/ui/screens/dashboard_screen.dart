@@ -84,20 +84,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return Scaffold(
       appBar: AppBar(
         titleSpacing: AppSpacing.screenH,
-        title: Row(
+        title: const Row(
           children: [
-            Container(
-              padding: const EdgeInsets.all(7),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [AppColors.brand, AppColors.brandDeep],
-                ),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Icon(Icons.shield_rounded, color: Colors.white, size: 18),
-            ),
-            const SizedBox(width: 10),
-            const Text('Traceback',
+            AppLogo(size: 30, borderRadius: 8),
+            SizedBox(width: 10),
+            Text('Traceback',
                 style: TextStyle(fontWeight: FontWeight.w800, letterSpacing: 0.2)),
           ],
         ),

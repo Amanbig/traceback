@@ -186,6 +186,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
           _group('Account', [_buildAccount()]),
           const SizedBox(height: AppSpacing.xl),
           _group('About', [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child: Row(
+                children: [
+                  const AppLogo(size: 38, borderRadius: 10),
+                  const SizedBox(width: 12),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('Traceback',
+                          style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+                      Text('AI Digital Scam Investigator',
+                          style: TextStyle(fontSize: 12, color: context.mutedText)),
+                    ],
+                  ),
+                ],
+              ),
+            ),
             const _InfoRow('Version', '1.3.0'),
             const _InfoRow('License', 'Apache 2.0'),
             const _InfoRow('Source', 'github.com/Amanbig/traceback'),

@@ -2,6 +2,60 @@ import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
 
+/// Branded app logo rendered from official asset with fallback
+class AppLogo extends StatelessWidget {
+  final double size;
+  final double borderRadius;
+  final bool hasGlow;
+
+  const AppLogo({
+    super.key,
+    this.size = 32,
+    this.borderRadius = 8,
+    this.hasGlow = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    Widget image = ClipRRect(
+      borderRadius: BorderRadius.circular(borderRadius),
+      child: Image.asset(
+        'assets/logo.png',
+        width: size,
+        height: size,
+        fit: BoxFit.contain,
+        errorBuilder: (_, __, ___) => Container(
+          width: size,
+          height: size,
+          decoration: BoxDecoration(
+            color: AppColors.brand,
+            borderRadius: BorderRadius.circular(borderRadius),
+          ),
+          child: Icon(Icons.shield_rounded, size: size * 0.6, color: Colors.white),
+        ),
+      ),
+    );
+
+    if (hasGlow) {
+      return Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(borderRadius),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.brand.withOpacity(0.4),
+              blurRadius: 28,
+              spreadRadius: 2,
+            ),
+          ],
+        ),
+        child: image,
+      );
+    }
+
+    return image;
+  }
+}
+
 /// Section title with an optional trailing action.
 class SectionHeader extends StatelessWidget {
   final String title;

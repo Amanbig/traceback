@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
+import '../widgets/common.dart';
 import 'main_navigation_screen.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -56,33 +57,14 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
           opacity: _fade,
           child: ScaleTransition(
             scale: _scale,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 32),
+            child: const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 32),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Container(
-                    width: 104,
-                    height: 104,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: const LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [AppColors.brand, AppColors.brandDeep],
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: AppColors.brand.withOpacity(0.45),
-                          blurRadius: 36,
-                          spreadRadius: 2,
-                        ),
-                      ],
-                    ),
-                    child: const Icon(Icons.shield_rounded, size: 56, color: Colors.white),
-                  ),
-                  const SizedBox(height: 28),
-                  const Text(
+                  AppLogo(size: 104, borderRadius: 24, hasGlow: true),
+                  SizedBox(height: 28),
+                  Text(
                     'Traceback',
                     style: TextStyle(
                       fontSize: 34,
@@ -91,8 +73,8 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                       letterSpacing: 0.5,
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  const Text(
+                  SizedBox(height: 8),
+                  Text(
                     'Check it before you trust it',
                     textAlign: TextAlign.center,
                     style: TextStyle(fontSize: 15, color: Color(0xFF94A3B8)),

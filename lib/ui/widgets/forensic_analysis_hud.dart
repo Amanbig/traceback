@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
+import 'common.dart';
 
 /// Progress dialog shown while a scan runs.
 ///
@@ -62,21 +63,7 @@ class _ForensicAnalysisHudState extends State<ForensicAnalysisHud>
                 ScaleTransition(
                   scale: Tween(begin: 0.94, end: 1.06)
                       .animate(CurvedAnimation(parent: _pulse, curve: Curves.easeInOut)),
-                  child: Container(
-                    width: 84,
-                    height: 84,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: AppColors.brand.withOpacity(0.15),
-                      boxShadow: [
-                        BoxShadow(
-                            color: AppColors.brand.withOpacity(0.3),
-                            blurRadius: 28,
-                            spreadRadius: 1),
-                      ],
-                    ),
-                    child: const Icon(Icons.shield_rounded, size: 42, color: AppColors.brand),
-                  ),
+                  child: const AppLogo(size: 76, borderRadius: 20, hasGlow: true),
                 ),
                 const SizedBox(height: 20),
                 const Text('Checking for scams',
