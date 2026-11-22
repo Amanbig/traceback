@@ -48,16 +48,23 @@ jobs:
           echo "✓ Git tag matches pubspec.yaml version successfully ($TAG_VERSION)."
 
       - name: Decode Android Keystore (If Secrets Present)
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
-          if [ -n "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" ]; then
+          if [ -n "$KEYSTORE_BASE64" ]; then
             echo "Decoding release keystore..."
-            echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode > android/app/traceback-release.jks
+            mkdir -p android/app
+            echo "$KEYSTORE_BASE64" | tr -d '\r\n ' | base64 -d > android/app/traceback-release.jks || python3 -c "import base64, os; open('android/app/traceback-release.jks', 'wb').write(base64.b64decode(os.environ['KEYSTORE_BASE64'].strip()))"
             cat <<EOF > android/key.properties
-          storePassword=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          keyPassword=${{ secrets.ANDROID_KEY_PASSWORD }}
-          keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}
+          storePassword=$KEYSTORE_PASSWORD
+          keyPassword=$KEY_PASSWORD
+          keyAlias=$KEY_ALIAS
           storeFile=traceback-release.jks
           EOF
+            echo "✓ Release keystore and android/key.properties ready."
           else
             echo "No keystore secret provided. Building with default signing."
           fi
