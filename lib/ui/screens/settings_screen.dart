@@ -66,12 +66,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
         children: [
           _group('Protection', [
             _SwitchRow(
-              icon: _preferOnDevice ? Icons.phone_android_rounded : Icons.cloud_outlined,
+              icon: _preferOnDevice ? Icons.phone_android_rounded : Icons.hub_outlined,
               color: _preferOnDevice ? AppColors.safe : AppColors.brand,
-              title: 'Private mode',
+              title: 'Strict On-Device Only',
               subtitle: _preferOnDevice
-                  ? 'On. Scans run on your phone and message text is not sent to any server.'
-                  : 'Off. Scans use cloud AI for deeper analysis.',
+                  ? 'Active: 100% on-device (Gemini Nano offline shield). Zero network calls.'
+                  : 'Hybrid AI (Recommended): Local PII scrub + Gemini 1.5 Flash via Firebase AI Logic (with instant offline fallback).',
               value: _preferOnDevice,
               onChanged: (val) {
                 setState(() => _preferOnDevice = val);

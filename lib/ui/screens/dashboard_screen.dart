@@ -29,7 +29,7 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
-  bool _preferOnDevice = true;
+  bool _preferOnDevice = false;
   List<ThreatReport> _history = [];
   bool _isLoadingMetrics = true;
 
@@ -44,7 +44,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final history = await HistoryService.getHistory();
     if (mounted) {
       setState(() {
-        _preferOnDevice = prefs.getBool('setting_prefer_on_device') ?? true;
+        _preferOnDevice = prefs.getBool('setting_prefer_on_device') ?? false;
         _history = history;
         _isLoadingMetrics = false;
       });
@@ -272,15 +272,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Icon(
-                    _preferOnDevice ? Icons.phone_android_rounded : Icons.cloud_outlined,
+                    _preferOnDevice ? Icons.phone_android_rounded : Icons.hub_outlined,
                     size: 15,
                     color: context.mutedText,
                   ),
                   const SizedBox(width: 6),
                   Text(
                     _preferOnDevice
-                        ? 'Private mode: scans stay on this device'
-                        : 'Cloud AI mode: deeper analysis',
+                        ? 'Strict On-Device: Nano shield'
+                        : 'Hybrid AI: Gemini 1.5 Flash + Local Shield',
                     style: TextStyle(fontSize: 13, color: context.mutedText),
                   ),
                   const SizedBox(width: 4),

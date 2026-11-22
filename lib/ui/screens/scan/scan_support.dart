@@ -15,7 +15,7 @@ class ScanRunner {
 
   static Future<bool> preferOnDevice() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getBool('setting_prefer_on_device') ?? true;
+    return prefs.getBool('setting_prefer_on_device') ?? false;
   }
 
   /// [analyze] receives `true` when private (on-device) mode is on.
