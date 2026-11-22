@@ -61,6 +61,7 @@ class FirebaseService {
           'high_risk_threshold': 75,
           'urgency_multiplier': 1.2,
           'enable_cloud_ai': true,
+          'gemini_model': 'gemini-1.5-flash',
         });
         await remoteConfig.fetchAndActivate();
       } catch (e) {

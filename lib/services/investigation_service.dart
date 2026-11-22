@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:firebase_ai/firebase_ai.dart';
+import 'package:firebase_remote_config/firebase_remote_config.dart';
 import 'package:uuid/uuid.dart';
 
 import '../models/threat_report.dart';
@@ -10,6 +11,17 @@ import 'firebase_service.dart';
 
 class InvestigationService {
   final _uuid = const Uuid();
+
+  /// Gets the dynamic Gemini model from Remote Config with fallback to fast flash model
+  static String get cloudModelName {
+    try {
+      if (FirebaseService.isInitialized) {
+        final configModel = FirebaseRemoteConfig.instance.getString('gemini_model');
+        if (configModel.isNotEmpty) return configModel;
+      }
+    } catch (_) {}
+    return 'gemini-1.5-flash';
+  }
 
   /// Investigates text message content using Hybrid Inference
   Future<ThreatReport> investigate({
@@ -111,7 +123,7 @@ class InvestigationService {
 
     try {
       final model = FirebaseAI.googleAI().generativeModel(
-        model: 'gemini-1.5-flash',
+        model: cloudModelName,
         generationConfig: GenerationConfig(
           responseMimeType: 'application/json',
         ),
@@ -244,7 +256,7 @@ Return ONLY a valid JSON object matching this schema:
 
     try {
       final model = FirebaseAI.googleAI().generativeModel(
-        model: 'gemini-1.5-flash',
+        model: cloudModelName,
         generationConfig: GenerationConfig(
           responseMimeType: 'application/json',
         ),
@@ -330,7 +342,7 @@ Return ONLY a valid JSON object matching this schema:
     }
 
     final model = FirebaseAI.googleAI().generativeModel(
-      model: 'gemini-1.5-flash',
+      model: cloudModelName,
       generationConfig: GenerationConfig(
         responseMimeType: 'application/json',
       ),

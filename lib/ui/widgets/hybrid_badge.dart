@@ -46,7 +46,7 @@ class HybridBadge extends StatelessWidget {
               Text(
                 isLocal
                     ? '100% Private • Local Gemini Nano / Rules'
-                    : 'Deep Audit • Gemini Flash via Firebase',
+                    : 'Deep Audit • Google Gemini via Firebase',
                 style: TextStyle(
                   fontSize: 10,
                   color: isDark ? Colors.grey[400] : Colors.grey[600],

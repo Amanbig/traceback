@@ -280,7 +280,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   Text(
                     _preferOnDevice
                         ? 'Strict On-Device: Nano shield'
-                        : 'Hybrid AI: Gemini 1.5 Flash + Local Shield',
+                        : 'Hybrid AI: Google Gemini + Local Shield',
                     style: TextStyle(fontSize: 13, color: context.mutedText),
                   ),
                   const SizedBox(width: 4),

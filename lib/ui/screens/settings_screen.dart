@@ -71,7 +71,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               title: 'Strict On-Device Only',
               subtitle: _preferOnDevice
                   ? 'Active: 100% on-device (Gemini Nano offline shield). Zero network calls.'
-                  : 'Hybrid AI (Recommended): Local PII scrub + Gemini 1.5 Flash via Firebase AI Logic (with instant offline fallback).',
+                  : 'Hybrid AI (Recommended): Local PII scrub + Google Gemini via Firebase AI Logic (with instant offline fallback).',
               value: _preferOnDevice,
               onChanged: (val) {
                 setState(() => _preferOnDevice = val);

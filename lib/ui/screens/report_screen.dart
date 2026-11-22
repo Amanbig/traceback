@@ -155,7 +155,7 @@ class _ReportScreenState extends State<ReportScreen> {
     final summary = '''
 TRACEBACK FRAUD INVESTIGATION REPORT
 Risk Score: ${report.riskScore}/100 (${report.threatLevel.name.toUpperCase()})
-Engine: ${report.isLocalInference ? 'On-Device Shield (Local Nano)' : 'Cloud AI (Gemini Flash)'}
+Engine: ${report.isLocalInference ? 'On-Device Shield (Local Nano)' : 'Cloud AI (Google Gemini)'}
 Type: ${report.isChainScan ? 'Multi-Message Threat Chain' : report.isImageScan ? 'Screenshot Scan' : 'Message Scan'}
 
 Summary:
