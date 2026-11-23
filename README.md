@@ -3,7 +3,7 @@
 
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Live Web App](https://img.shields.io/badge/Live%20Demo-gem--app--2adf0.web.app-brightgreen?logo=firebase)](https://gem-app-2adf0.web.app)
-[![Release: v1.3.0](https://img.shields.io/badge/Release-v1.3.0-orange?logo=github)](https://github.com/Amanbig/traceback/releases/tag/v1.3.0)
+[![Release: v1.4.0](https://img.shields.io/badge/Release-v1.4.0-orange?logo=github)](https://github.com/Amanbig/traceback/releases/tag/v1.4.0)
 [![Flutter](https://img.shields.io/badge/Flutter-v3.24.5-02569B?logo=flutter)](https://flutter.dev)
 [![Firebase AI Logic](https://img.shields.io/badge/AI-Firebase%20AI%20Logic-FFCA28?logo=firebase)](https://firebase.google.com/docs/ai-logic)
 [![Hackathon](https://img.shields.io/badge/%23BuildHybridAI-Submission-4285F4?logo=google)](https://github.com/Amanbig/traceback)
@@ -118,12 +118,12 @@ Built specifically for hackathon evaluators to test all forensic capabilities in
 
 ## 📦 Downloads & Releases
 
-Pre-compiled production release artifacts are available under [GitHub Releases (v1.3.0)](https://github.com/Amanbig/traceback/releases/tag/v1.3.0):
+Pre-compiled production release artifacts are available under [GitHub Releases (v1.4.0)](https://github.com/Amanbig/traceback/releases/tag/v1.4.0):
 
-- **Android APK:** `traceback-v1.3.0-android.apk` (56.54 MB)
-- **Android App Bundle:** `traceback-v1.3.0-android.aab` (27.40 MB)
-- **iOS Archive:** `traceback-v1.3.0-ios.zip` (16.55 MB)
-- **Web Bundle:** `traceback-v1.3.0-web.zip` (7.67 MB)
+- **Android APK:** `traceback-v1.4.0-android.apk`
+- **Android App Bundle:** `traceback-v1.4.0-android.aab`
+- **iOS Archive:** `traceback-v1.4.0-ios.zip`
+- **Web Bundle:** `traceback-v1.4.0-web.zip`
 - **Live Progressive Web App:** [https://gem-app-2adf0.web.app](https://gem-app-2adf0.web.app)
 
 ---

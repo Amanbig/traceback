@@ -204,7 +204,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ],
               ),
             ),
-            const _InfoRow('Version', '1.3.0'),
+            const _InfoRow('Version', '1.4.0'),
             const _InfoRow('License', 'Apache 2.0'),
             const _InfoRow('Source', 'github.com/Amanbig/traceback'),
           ]),
