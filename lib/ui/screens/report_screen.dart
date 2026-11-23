@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../models/threat_report.dart';
 import '../../models/scam_radar_item.dart';
 import '../../services/firebase_service.dart';
@@ -195,6 +196,47 @@ ${report.safeNextSteps.map((s) => '• $s').join('\n')}
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Report copied to clipboard')),
     );
+  }
+
+  Future<void> _shareOnWhatsApp(BuildContext context) async {
+    final localizedSummary = VernacularTranslationService.getSummary(
+      _selectedLanguage,
+      report.summary,
+      report.threatLevel.name,
+      report.riskScore,
+    );
+    final warningText = '''🚨 *FRAUD ALERT (Traceback Forensic Report)*
+
+*Risk Assessment:* ${report.threatLevel.name.toUpperCase()} (${report.riskScore}% Risk Score)
+*Engine:* ${report.isLocalInference ? 'On-Device Shield (Local ML + Heuristics)' : 'Cloud AI (Google Gemini)'}
+
+*Forensic Summary:*
+$localizedSummary
+
+⚠️ *Immediate Protective Steps:*
+• NEVER click unverified links or install unknown .apk files.
+• NEVER enter your UPI PIN to receive money or cashback.
+• If money was debited, call national helpline *1930* immediately.
+
+Verify suspicious messages safely: https://gem-app-2adf0.web.app''';
+
+    final uri = Uri.parse('https://api.whatsapp.com/send?text=${Uri.encodeComponent(warningText)}');
+    try {
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+        return;
+      }
+    } catch (_) {}
+
+    await Clipboard.setData(ClipboardData(text: warningText));
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Scam warning advisory copied to clipboard for sharing!'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
   }
 
   Widget _title(String text) => Padding(
@@ -513,7 +555,12 @@ ${report.safeNextSteps.map((s) => '• $s').join('\n')}
         actions: [
           IconButton(
             icon: const Icon(Icons.share_outlined),
-            tooltip: 'Copy summary',
+            tooltip: 'Share advisory on WhatsApp',
+            onPressed: () => _shareOnWhatsApp(context),
+          ),
+          IconButton(
+            icon: const Icon(Icons.copy_rounded),
+            tooltip: 'Copy text summary',
             onPressed: () => _copySummary(context),
           ),
           const SizedBox(width: 4),

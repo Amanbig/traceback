@@ -1,168 +1,163 @@
 # Traceback 🛡️
-### AI Digital Scam & Fraud Forensics Engine
+### AI Digital Scam & Fraud Forensics Engine (Bharat Cyber Shield)
 
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-[![Live Demo](https://img.shields.io/badge/Live%20App-gem--app--2adf0.web.app-brightgreen?logo=firebase)](https://gem-app-2adf0.web.app)
-[![Flutter](https://img.shields.io/badge/Flutter-v3.24%2B-02569B?logo=flutter)](https://flutter.dev)
+[![Live Web App](https://img.shields.io/badge/Live%20Demo-gem--app--2adf0.web.app-brightgreen?logo=firebase)](https://gem-app-2adf0.web.app)
+[![Release: v1.3.0](https://img.shields.io/badge/Release-v1.3.0-orange?logo=github)](https://github.com/Amanbig/traceback/releases/tag/v1.3.0)
+[![Flutter](https://img.shields.io/badge/Flutter-v3.24.5-02569B?logo=flutter)](https://flutter.dev)
 [![Firebase AI Logic](https://img.shields.io/badge/AI-Firebase%20AI%20Logic-FFCA28?logo=firebase)](https://firebase.google.com/docs/ai-logic)
-[![Platforms](https://img.shields.io/badge/Platforms-Android%20%7C%20Web-4285F4)](#getting-started)
-[![Status](https://img.shields.io/badge/Build-Passing-brightgreen)](#testing--code-quality)
+[![Hackathon](https://img.shields.io/badge/%23BuildHybridAI-Submission-4285F4?logo=google)](https://github.com/Amanbig/traceback)
 
-> **Traceback** is an open-source, privacy-preserving digital fraud investigator. Unlike basic spam blockers that merely flag messages, Traceback decompiles social-engineering attack patterns—exposing urgency traps, deceptive domain squatting, authority impersonation, and credential-harvesting mechanisms across SMS, messaging apps, emails, and suspicious URLs.
+> **Traceback** is an open-source, zero-leakage hybrid AI forensic investigator built for the **#BuildHybridAI** Hackathon. It decompiles social-engineering attack patterns—exposing Digital Arrest coercion, UPI reverse-charge traps, Remote Access Trojan (RAT) APKs, electricity disconnection panic, and typosquatted domains across SMS, WhatsApp, screenshots, threat message sequences, and suspicious URLs.
 
 ---
 
 ## 🌟 The Problem & Value Proposition
 
-Traditional spam filters operate as opaque black boxes: they label messages as "spam" or "not spam" without explaining *why*. When a user receives an alarming message—such as a bank suspension warning, a digital arrest threat, or an electricity disconnection ultimatum—fear and cognitive overload often lead them to click malicious links anyway.
+India and global digital ecosystems face an unprecedented surge in sophisticated social-engineering cyber fraud. In India alone, over **₹1,750 Crore** was siphoned through digital fraud schemes in recent quarters:
+- **Digital Arrest Scams:** Fraudsters impersonating CBI, Cyber Crime, or Customs on Skype video calls demanding "security deposits".
+- **Reverse UPI PIN Traps:** Fake "cashback" or "refund" collect requests deceiving victims into entering their secret UPI PIN to "receive" funds.
+- **Utility Disconnection Panic:** Alarming SMS threats claiming electricity will be disconnected at 9:30 PM unless a private phone number is called.
+- **Remote Access Trojans (RATs):** Tricking users into sideloading malicious `.apk` packages (AnyDesk, QuickSupport, RustDesk).
 
-**Traceback transforms users from potential victims into informed defenders:**
-1. **Explainable AI Forensics:** Highlights exact manipulative phrases and explains the psychology behind the attack (Fear, Authority Impersonation, False Scarcity).
-2. **Zero-Leakage Privacy Guard:** Automatically redacts phone numbers, bank accounts, emails, and OTPs on-device before any external cloud inference occurs.
-3. **Actionable Defense Checklist:** Delivers immediate, safe guidance (e.g., official verification channels, national cybercrime helplines) rather than just a warning flag.
-4. **Community Scam Radar:** Catalogs trending real-world scam campaigns to build proactive collective immunity.
+Traditional spam filters act as opaque black boxes: they label messages as "spam" or "ham" without explaining *why*. Fear and urgency bypass critical thinking, causing victims to comply anyway.
 
----
-
-## ⚡ Hybrid Inference Architecture
-
-Traceback implements a multi-tiered hybrid intelligence pipeline using the **Firebase AI Logic SDK** (`firebase_ai`), balancing zero-leakage local privacy, instantaneous offline response, and in-depth cloud forensic investigation.
-
-```
-+-------------------------------------------------------------------------+
-|                              USER INPUT                                 |
-|         (Suspicious SMS / WhatsApp / Email / QR Code / URL)             |
-+-------------------------------------------------------------------------+
-                                     │
-                                     ▼
-+-------------------------------------------------------------------------+
-|                  ON-DEVICE PRIVACY & TRIAGE LAYER                       |
-|                                                                         |
-|  1. Local PII Redaction: Masks [CARD], [PHONE], [ACCOUNT], [OTP]        |
-|  2. Lexical URL Security: Punycode, suspicious TLDs, IP hosts           |
-|  3. Fast Heuristic Engine: Urgency scoring & panic pattern detection    |
-+-------------------------------------------------------------------------+
-                                     │
-                    Is Device Offline or Local Mode Preferred?
-                                  /     \
-                       YES       /       \      NO (Deep Audit)
-                                /         \
-                               ▼           ▼
-+-----------------------------------+   +---------------------------------+
-|   LOCAL INFERENCE (GEMINI NANO)   |   |   CLOUD INFERENCE (GEMINI FLASH)|
-| • Zero-latency offline triage     |   | • Multi-turn forensic analysis  |
-| • Full privacy (data stays local) |   | • Social engineering breakdown  |
-| • Rapid preliminary threat score  |   | • Threat intel cross-referencing|
-+-----------------------------------+   +---------------------------------+
-                                \         /
-                                 \       /
-                                  ▼     ▼
-+-------------------------------------------------------------------------+
-|                       INTERACTIVE THREAT REPORT                         |
-|  • Threat Risk Gauge (0-100 Score)                                      |
-|  • Identified Red Flags & Manipulative Phrases                          |
-|  • Social Engineering Tactics Taxonomy                                  |
-|  • Safe Next Steps Checklist & Official Helplines                       |
-|  • On-Device Encrypted History Persistence                              |
-+-------------------------------------------------------------------------+
-```
-
-### Why Hybrid Inference Matters for Fraud Detection
-- **On-Device (Local Gemini Nano):** Protects sensitive user data (bank details, personal names, OTPs) by keeping it strictly on the device. Provides instant offline protection when travelers have no cellular data.
-- **Cloud Fallback (Gemini Flash via Firebase AI Logic):** When devices lack local NPU/Nano hardware, Firebase AI Logic provides automatic fallback to cloud inference for deep psychological and contextual investigation.
+**Traceback transforms users from vulnerable targets into informed forensic defenders:**
+1. **Explainable AI Forensics:** Highlights exact manipulative phrases and explains the cognitive levers applied (Fear, Isolation, Authority Impersonation, False Urgency).
+2. **Zero-Leakage Privacy Guard:** Automatically scrubs phone numbers, Aadhaar, PAN, UPI IDs, bank accounts, and OTPs on-device before any external cloud inference occurs.
+3. **Pure-Dart On-Device ML Classifier (<1ms):** Pre-calibrated Log-Odds Naive Bayes & N-Gram model running 100% locally with zero external C++ binary dependencies across Web, Android, and iOS.
+4. **8 Indian Vernacular Languages:** Generates localized emergency recovery playbooks in English, Hindi (हिंदी), Tamil (தமிழ்), Telugu (తెలుగు), Bengali (বাংলা), Marathi (मराठी), Gujarati (ગુજરાતી), and Kannada (ಕನ್ನಡ).
+5. **Tamper-Proof PDF Forensic Evidence Dossier:** Generates an official incident dossier with SHA-256 chain of custody checksum and statutory 1930 / FIR bank dispute annexure.
 
 ---
 
-## 🔒 Firebase Products Integration
+## ⚡ Hybrid AI Architecture
 
-| Product | Role in Traceback |
+Traceback implements Google's Hybrid AI paradigm using the **Firebase AI Logic SDK** (`firebase_ai`), combining zero-latency on-device statistical machine learning with cloud multimodal intelligence:
+
+```
++-----------------------------------------------------------------------------------+
+|                                  USER INPUT                                       |
+|  (Suspicious SMS / WhatsApp / Screenshots / Threat Chain / QR Code / URLs)        |
++-----------------------------------------------------------------------------------+
+                                          │
+                                          ▼
++-----------------------------------------------------------------------------------+
+|                     ON-DEVICE ZERO-LEAKAGE PRIVACY LAYER                          |
+|                                                                                   |
+|  1. Local PII Masker: Scrubs [CARD], [PHONE], [ACCOUNT], [AADHAAR], [PAN], [UPI]   |
+|  2. Pure-Dart ML Model: Log-odds Naive Bayes + N-Gram Spam Classifier (<1ms)     |
+|  3. Deterministic Heuristics: RAT APKs, Digital Arrest, Reverse UPI, Utility Cut  |
+|  4. Lexical URL Security: Homoglyphs, punycode, entropy, suspicious TLDs          |
++-----------------------------------------------------------------------------------+
+                                          │
+                        Is Offline or "Prefer On-Device" ON?
+                                       /     \
+                            YES       /       \      NO (Default Hybrid)
+                                     /         \
+                                    ▼           ▼
++---------------------------------------+   +---------------------------------------+
+|     LOCAL SHIELD INFERENCE ENGINE     |   |   CLOUD AI (FIREBASE AI LOGIC SDK)    |
+| • 100% offline (Airplane mode ready)  |   | • Dynamic Gemini Flash / Pro routing  |
+| • Sub-millisecond execution latency   |   | • Deep cross-message threat chain     |
+| • Zero telemetry / zero data egress   |   | • Psychological lever decompilation   |
+| • Probabilistic ML + Heuristic Fusion |   | • Auto-fallback to local if offline   |
++---------------------------------------+   +---------------------------------------+
+                                    \           /
+                                     \         /
+                                      ▼       ▼
++-----------------------------------------------------------------------------------+
+|                          INTERACTIVE FORENSIC DOSSIER                             |
+|  • Threat Risk Gauge (0-100 Score) & Color-Coded Threat Tier                      |
+|  • On-Device ML Probability Indicator (e.g. 96% Statistical Scam Confidence)     |
+|  • Manipulative Phrases Tagged in Evidence Transcript                             |
+|  • 8-Language Vernacular Translation & Emergency Action Steps                     |
+|  • 1-Tap WhatsApp Family Advisory Sharing                                         |
+|  • Tamper-Proof SHA-256 PDF Incident Dossier (for Police / Bank Dispute)          |
++-----------------------------------------------------------------------------------+
+```
+
+---
+
+## 🔒 Firebase Ecosystem Integration
+
+| Product | Architecture & Role in Traceback |
 | :--- | :--- |
-| **Firebase AI Logic (`firebase_ai`)** | Powers both on-device model routing and Gemini Flash cloud inference with JSON schema outputs. |
-| **Firebase App Check** | Attests legitimate app instances, securing client-side AI endpoints against API abuse. |
-| **Firebase Firestore** | Stores community threat intelligence reports and trending scam patterns on the Scam Radar. |
-| **Firebase Auth** | Allows users to securely sync their investigation history across personal devices. |
-| **Firebase Remote Config** | Dynamically updates fraud heuristic weights and high-risk domain registries without requiring app store updates. |
+| **Firebase AI Logic (`firebase_ai`)** | Powers Gemini 1.5 Flash / Pro model invocation with structured JSON schema outputs and automatic on-device fallback. |
+| **Firebase Hosting** | Continuous deployment of production Flutter Web releases at [gem-app-2adf0.web.app](https://gem-app-2adf0.web.app). |
+| **Firebase Remote Config** | Dynamically updates Gemini model parameters and threat classification weights over-the-air without app updates. |
+| **Firebase App Check** | Attests authentic app instances, preventing automated scraping and abuse of AI backend endpoints. |
+| **Firebase Firestore** | Catalogs community threat intelligence reports and trending scams on the live Scam Radar. |
+| **Firebase Auth** | Provides anonymous and authenticated session management for persistent cross-device threat tracking. |
 
 ---
 
-## 📱 Core Features
+## 📱 Key Capabilities
 
-### 1. Hybrid Threat Investigation
-- Paste any text or enter a URL.
-- One-tap switch between **On-Device Shield (Gemini Nano)** and **Cloud AI (Gemini Flash)**.
-- Step-by-step forensic status indicators during analysis.
+### 1. Multi-Vector Forensic Scanners
+- **Message Scan:** Analyzes SMS, WhatsApp messages, emails, and social media DMs.
+- **Multimodal Screenshot Scan:** Gemini Vision decompiles spoofed bank layouts, fake notice logos, and urgency badges.
+- **Threat Chain Investigator:** Correlates multiple consecutive messages to expose how scammers escalate from initial lure to financial extortion.
+- **QR / UPI Threat Inspector:** Validates UPI deep-links (`upi://pay`) to detect "enter PIN to receive" deception and deceptive `pa=` handles.
+- **URL Inspector:** Detects typosquatting, homoglyph character spoofing, and high-risk top-level domains.
 
-### 2. Forensic Threat Report
-- **Threat Gauge:** Dynamic circular risk meter (0–100) with color-coded severity:
-  - `0 - 20`: Verified Safe
-  - `21 - 40`: Low Risk
-  - `41 - 65`: Suspicious
-  - `66 - 80`: High Risk Phishing
-  - `81 - 100`: Critical Fraud
-- **Social Engineering Taxonomy:** Flags tactics like *Authority Impersonation*, *Urgency & Fear Manipulation*, and *Credential Harvesting*.
-- **Interactive Red Flags:** Point-by-point annotations detailing why specific phrases or domain structures are malicious.
-- **Actionable Defense Checklist:** Immediate steps for victims (blocking numbers, contacting official bank portals, dialing 1930).
+### 2. Evaluator Quick-Demo Deck
+Built specifically for hackathon evaluators to test all forensic capabilities in **1 tap without typing**:
+- 🚨 **Digital Arrest & CBI Notice** (Authority intimidation)
+- 💸 **UPI Reverse PIN Cashback Trap** (Collect request exploit)
+- ⚡ **Electricity Midnight Disconnect Panic** (Utility cut-off panic)
+- 📲 **AnyDesk Remote APK Sideload** (Malware installation)
+- 💬 **Legitimate Family Chat** (Zero false-positive pure-Dart ML test)
 
-### 3. Community Scam Radar
-- Searchable directory of trending real-world scam campaigns:
-  - *Digital Arrest & Narcotics Parcel Scam*
-  - *Electricity Bill Disconnection Panic*
-  - *Bank KYC Account Suspension Phishing*
-  - *Part-Time Task & YouTube Video Like Fraud*
-  - *Fake Traffic E-Challan APK Malware*
-- Direct "Test This Scenario" button to run live simulations in the investigator.
+### 3. Bharat Cyber Shield & Statutory Compliance
+- **Emergency Action Playbooks:** Step-by-step guidance to freeze accounts, block UPI IDs, and dial **1930** (National Cyber Crime Reporting Helpline).
+- **Tamper-Proof PDF Dossier:** Printable legal evidence dossier featuring a SHA-256 custody hash for submitting to Cyber Cells and bank ombudsmen.
+- **1-Tap WhatsApp Warning:** Allows users to immediately share clean, localized fraud warnings to family WhatsApp groups.
 
-### 4. Investigation History
-- Offline-first encrypted storage of past reports using `SharedPreferences`.
-- Fast search and review of historical threat reports.
+---
+
+## 📦 Downloads & Releases
+
+Pre-compiled production release artifacts are available under [GitHub Releases (v1.3.0)](https://github.com/Amanbig/traceback/releases/tag/v1.3.0):
+
+- **Android APK:** `traceback-v1.3.0-android.apk` (56.54 MB)
+- **Android App Bundle:** `traceback-v1.3.0-android.aab` (27.40 MB)
+- **iOS Archive:** `traceback-v1.3.0-ios.zip` (16.55 MB)
+- **Web Bundle:** `traceback-v1.3.0-web.zip` (7.67 MB)
+- **Live Progressive Web App:** [https://gem-app-2adf0.web.app](https://gem-app-2adf0.web.app)
 
 ---
 
 ## 🚀 Getting Started
 
 ### Prerequisites
-- [Flutter SDK](https://docs.flutter.dev/get-started/install) (v3.24.5 or newer)
-- Modern web browser (Chrome recommended for Gemini Nano Prompt API) or Android device
+- [Flutter SDK](https://docs.flutter.dev/get-started/install) (`v3.24.5`)
+- Google Chrome or Android device / emulator
 
-### Installation
-
-1. **Clone the repository:**
-   ```bash
-   git clone https://github.com/your-username/traceback.git
-   cd traceback
-   ```
-
-2. **Install Flutter dependencies:**
-   ```bash
-   flutter pub get
-   ```
-
-3. **Run on Web:**
-   ```bash
-   flutter run -d chrome
-   ```
-
-4. **Build Production Web Release:**
-   ```bash
-   flutter build web --release
-   ```
-
-5. **Run on Android (requires connected device/emulator):**
-   ```bash
-   flutter run -d android
-   ```
-
----
-
-## 🧪 Testing & Code Quality
-
-Traceback maintains clean code health:
+### Local Setup
 
 ```bash
-# Run static analysis
+# 1. Clone the repository
+git clone https://github.com/Amanbig/traceback.git
+cd traceback
+
+# 2. Install dependencies
+flutter pub get
+
+# 3. Run in Chrome (Web)
+flutter run -d chrome
+
+# 4. Run on Android device
+flutter run -d android
+```
+
+### Static Analysis & Verification
+
+```bash
+# Verify static analysis (0 warnings / 0 errors)
 flutter analyze
 
-# Run unit and widget tests
+# Run unit and widget test suite
 flutter test
 ```
 
@@ -170,4 +165,4 @@ flutter test
 
 ## 📄 License
 
-Licensed under the **Apache License, Version 2.0**. See the [LICENSE](LICENSE) file for details.
+Licensed under the **Apache License, Version 2.0**. See [LICENSE](LICENSE) for details.

@@ -73,6 +73,113 @@ class _ScanHubScreenState extends State<ScanHubScreen> with WidgetsBindingObserv
     );
   }
 
+  Widget _buildEvaluatorDeck(BuildContext context) {
+    final demos = [
+      (
+        label: '🚨 Digital Arrest',
+        color: AppColors.danger,
+        text:
+            'MUMBAI POLICE & CBI NOTICE: Case #CR-9102 registered under your Aadhaar. A parcel containing 5 fake passports and narcotic contraband was seized at customs. Connect to official Skype video immediately for digital arrest inquiry or warrant will execute.',
+      ),
+      (
+        label: '💸 Reverse UPI PIN',
+        color: AppColors.brand,
+        text:
+            'Congratulations! You received Rs 4,999 cashback reward on PhonePe. Click here and enter your UPI PIN to claim money directly into your bank account: phonepe-rewards-claim.xyz',
+      ),
+      (
+        label: '⚡ Electricity Panic',
+        color: AppColors.warn,
+        text:
+            'Dear Consumer, Your electricity power will be disconnected tonight at 9:30 PM from the power office because your previous month bill was not updated. Please immediately contact our electricity officer at 98123-XXXXX. Thank you.',
+      ),
+      (
+        label: '📲 AnyDesk RAT APK',
+        color: const Color(0xFFEF4444),
+        text:
+            'SBI NetBanking alert: Your YONO account is suspended. Download and install our official QuickSupport APK update from http://sbi-yono-support.top/apk to verify KYC immediately.',
+      ),
+      (
+        label: '💬 Benign Chat (Ham)',
+        color: AppColors.safe,
+        text:
+            'Hey mom, heading home for dinner with dad tonight. See you soon, love you!',
+      ),
+    ];
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: context.surfaceColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: context.outlineColor),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.bolt_rounded, size: 18, color: AppColors.brand),
+              const SizedBox(width: 6),
+              const Text(
+                'Quick Evaluator Demo Deck',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+              ),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: AppColors.brand.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: const Text(
+                  '1-TAP TEST',
+                  style: TextStyle(
+                    fontSize: 9,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.brand,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Test on-device ML triage and zero-leakage PII scrubbing:',
+            style: TextStyle(fontSize: 11.5, color: context.mutedText),
+          ),
+          const SizedBox(height: 10),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: demos.map((d) {
+                return Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: ActionChip(
+                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                    backgroundColor: d.color.withOpacity(0.08),
+                    side: BorderSide(color: d.color.withOpacity(0.3)),
+                    label: Text(
+                      d.label,
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w600,
+                        color: d.color,
+                      ),
+                    ),
+                    onPressed: () {
+                      _open(context, MessageScanScreen(initialText: d.text));
+                    },
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -155,7 +262,12 @@ class _ScanHubScreenState extends State<ScanHubScreen> with WidgetsBindingObserv
           const SizedBox(height: 6),
           Text('Pick the kind of thing you received.',
               style: TextStyle(fontSize: 14.5, color: context.mutedText)),
+          const SizedBox(height: AppSpacing.md),
+
+          // 2. Evaluator & Judge Quick Test Deck
+          _buildEvaluatorDeck(context),
           const SizedBox(height: AppSpacing.lg),
+
           _Option(
             icon: Icons.chat_bubble_outline_rounded,
             color: const Color(0xFF60A5FA),

@@ -397,6 +397,7 @@ Return ONLY a valid JSON object with the following schema:
       safeNextSteps: List<String>.from(decoded['safeNextSteps'] ?? localBaseline.safeNextSteps),
       isLocalInference: false,
       createdAt: DateTime.now(),
+      mlSpamProbability: localBaseline.mlSpamProbability,
     );
   }
 }
