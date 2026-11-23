@@ -173,10 +173,13 @@ class _ReportScreenState extends State<ReportScreen> {
   }
 
   void _copySummary(BuildContext context) {
+    final mlInfo = report.mlSpamProbability != null
+        ? '\nOn-Device ML Confidence: ${(report.mlSpamProbability! * 100).toStringAsFixed(1)}% Scam Probability'
+        : '';
     final summary = '''
 TRACEBACK FRAUD INVESTIGATION REPORT
 Risk Score: ${report.riskScore}/100 (${report.threatLevel.name.toUpperCase()})
-Engine: ${report.isLocalInference ? 'On-Device Shield (Local Nano)' : 'Cloud AI (Google Gemini)'}
+Engine: ${report.isLocalInference ? 'On-Device Shield (Local ML & Heuristics)' : 'Cloud AI (Google Gemini)'}$mlInfo
 Type: ${report.isChainScan ? 'Multi-Message Threat Chain' : report.isImageScan ? 'Screenshot Scan' : 'Message Scan'}
 
 Summary:
@@ -265,7 +268,10 @@ ${report.safeNextSteps.map((s) => '• $s').join('\n')}
             style: const TextStyle(fontSize: 15, height: 1.5),
           ),
           const SizedBox(height: 14),
-          HybridBadge(isLocal: report.isLocalInference),
+          HybridBadge(
+            isLocal: report.isLocalInference,
+            mlProbability: report.mlSpamProbability,
+          ),
         ],
       ),
     );

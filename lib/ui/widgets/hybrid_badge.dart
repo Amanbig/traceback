@@ -2,12 +2,16 @@ import 'package:flutter/material.dart';
 
 class HybridBadge extends StatelessWidget {
   final bool isLocal;
+  final double? mlProbability;
 
-  const HybridBadge({super.key, required this.isLocal});
+  const HybridBadge({super.key, required this.isLocal, this.mlProbability});
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final mlSubtext = mlProbability != null
+        ? '100% Private • Local ML (${(mlProbability! * 100).toStringAsFixed(0)}% Risk) + Rules'
+        : '100% Private • On-Device ML & Heuristics';
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -45,7 +49,7 @@ class HybridBadge extends StatelessWidget {
               ),
               Text(
                 isLocal
-                    ? '100% Private • Local Gemini Nano / Rules'
+                    ? mlSubtext
                     : 'Deep Audit • Google Gemini via Firebase',
                 style: TextStyle(
                   fontSize: 10,

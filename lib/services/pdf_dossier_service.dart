@@ -127,8 +127,14 @@ class PdfDossierService {
                   pw.Row(
                     children: [
                       pw.Expanded(
-                        child: _buildMetaRow('Inference Engine:',
-                            report.isLocalInference ? 'Gemini Nano (On-Device)' : 'Google Gemini (Cloud AI)'),
+                        child: _buildMetaRow(
+                          'Inference Engine:',
+                          report.isLocalInference
+                              ? (report.mlSpamProbability != null
+                                  ? 'On-Device ML & Rules (${(report.mlSpamProbability! * 100).toInt()}% ML Prob)'
+                                  : 'On-Device Shield (Nano & Rules)')
+                              : 'Google Gemini (Cloud AI)',
+                        ),
                       ),
                       pw.Expanded(
                         child: _buildMetaRow('PII Protection:', 'Zero-Leakage Local Scrubbing Active'),

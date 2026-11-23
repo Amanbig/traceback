@@ -1,4 +1,6 @@
+import 'dart:math' as math;
 import '../models/threat_report.dart';
+import 'on_device_ml_classifier.dart';
 import 'url_threat_analyzer.dart';
 
 class LocalThreatClassifier {
@@ -166,18 +168,48 @@ class LocalThreatClassifier {
       }
     }
 
+    // 10. Statistical On-Device Machine Learning Inference (Pure-Dart Naive Bayes & N-Gram Model)
+    final mlPrediction = OnDeviceMlClassifier.predict(maskedSnippet);
+    final mlProb = mlPrediction.spamProbability;
+
+    if (mlPrediction.isHighConfidenceSpam) {
+      tactics.add('On-Device ML: ${(mlProb * 100).toStringAsFixed(1)}% Scam Probability');
+      if (mlPrediction.topSpamTokens.isNotEmpty) {
+        redFlags.add('Statistical on-device ML flagged high-risk scam vocabulary (${mlPrediction.topSpamTokens.join(', ')})');
+      }
+    } else if (mlPrediction.isSuspicious) {
+      tactics.add('On-Device ML: ${(mlProb * 100).toStringAsFixed(1)}% Suspicious Pattern');
+    }
+
+    // Hybrid Fusion Ensemble: Blend Rule Heuristics with On-Device Probabilistic ML
+    int finalRiskScore;
+    if (primaryVectors.isNotEmpty) {
+      // Deterministic fraud vector detected (RAT APK, Digital Arrest, UPI reverse PIN, Fake Challan)
+      // Heuristics set an authoritative floor; ML corroborates
+      finalRiskScore = math.max(riskScore, (riskScore * 0.75 + mlPrediction.riskScore * 0.25).round());
+    } else if (mlPrediction.isHighConfidenceSpam) {
+      // No single deterministic regex fired, but vocabulary strongly indicates lottery/prize/crypto/scam
+      finalRiskScore = math.max(riskScore, mlPrediction.riskScore);
+    } else if (mlPrediction.topHamTokens.isNotEmpty && riskScore <= 15) {
+      // Legitimate conversational markers actively lower residual risk
+      finalRiskScore = (riskScore * 0.4 + mlPrediction.riskScore * 0.6).round().clamp(0, 15);
+    } else {
+      // Balanced ensemble
+      finalRiskScore = (riskScore * 0.55 + mlPrediction.riskScore * 0.45).round();
+    }
+
     // Normalize risk score
-    riskScore = riskScore.clamp(5, 98);
+    finalRiskScore = finalRiskScore.clamp(5, 98);
 
     // Determine Threat Level
     ThreatLevel level;
-    if (riskScore >= 75) {
+    if (finalRiskScore >= 75) {
       level = ThreatLevel.critical;
-    } else if (riskScore >= 55) {
+    } else if (finalRiskScore >= 55) {
       level = ThreatLevel.dangerous;
-    } else if (riskScore >= 35) {
+    } else if (finalRiskScore >= 35) {
       level = ThreatLevel.suspicious;
-    } else if (riskScore >= 20) {
+    } else if (finalRiskScore >= 20) {
       level = ThreatLevel.low;
     } else {
       level = ThreatLevel.safe;
@@ -219,7 +251,7 @@ class LocalThreatClassifier {
       id: id,
       originalSnippet: originalSnippet,
       maskedSnippet: maskedSnippet,
-      riskScore: riskScore,
+      riskScore: finalRiskScore,
       threatLevel: level,
       summary: summary,
       redFlags: redFlags.toSet().toList(),
@@ -227,6 +259,7 @@ class LocalThreatClassifier {
       safeNextSteps: safeNextSteps.toSet().toList(),
       isLocalInference: true,
       createdAt: DateTime.now(),
+      mlSpamProbability: mlProb,
     );
   }
 }

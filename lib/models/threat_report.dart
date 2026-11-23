@@ -24,6 +24,7 @@ class ThreatReport {
   final bool isImageScan;
   final bool isChainScan;
   final List<Map<String, dynamic>>? chainStages;
+  final double? mlSpamProbability; // On-device ML probabilistic spam score
 
   ThreatReport({
     required this.id,
@@ -41,6 +42,7 @@ class ThreatReport {
     this.isImageScan = false,
     this.isChainScan = false,
     this.chainStages,
+    this.mlSpamProbability,
   });
 
   Map<String, dynamic> toMap() {
@@ -60,6 +62,7 @@ class ThreatReport {
       'isImageScan': isImageScan,
       'isChainScan': isChainScan,
       'chainStages': chainStages,
+      'mlSpamProbability': mlSpamProbability,
     };
   }
 
@@ -85,6 +88,7 @@ class ThreatReport {
       chainStages: (map['chainStages'] as List<dynamic>?)
           ?.map((e) => Map<String, dynamic>.from(e as Map))
           .toList(),
+      mlSpamProbability: (map['mlSpamProbability'] as num?)?.toDouble(),
     );
   }
 
